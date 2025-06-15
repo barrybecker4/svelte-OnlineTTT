@@ -3,6 +3,15 @@ name = "svelte-onlinettt"
 compatibility_date = "2024-05-15"
 pages_build_output_dir = "dist"
 
+[durable_objects]
+bindings = [
+    { name = "WEBSOCKET_HIBERNATION_SERVER", class_name = "WebSocketHibernationServer" }
+]
+
+[[durable_objects.migrations]]
+tag = "v1"
+new_classes = ["WebSocketHibernationServer"]
+
 [env.development]
 kv_namespaces = [
     { binding = "TTT_GAME_KV", id = "2ed8441b10cd4ca59cfeaa3081b4b7d1" }
@@ -12,8 +21,3 @@ kv_namespaces = [
 kv_namespaces = [
     { binding = "TTT_GAME_KV", id = "da8a29a1985a49de9be56c5d41188229" }
 ]
-
-# Uncomment when we add WebSocket support
-# [[durable_objects.bindings]]
-# name = "WEBSOCKET_HIBERNATION_SERVER"
-# class_name = "WebSocketHibernationServer"

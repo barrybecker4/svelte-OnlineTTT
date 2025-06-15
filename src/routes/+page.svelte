@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import GameBoard from '$lib/components/Game/GameBoard.svelte';
   import GameStatus from '$lib/components/Game/GameStatus.svelte';
   import GameControls from '$lib/components/Game/GameControls.svelte';
   import PlayerHistory from '$lib/components/Game/PlayerHistory.svelte';
   import type { GameState, GameHistory } from '$lib/types/game.ts';
+  import { getWebSocketClient } from '$lib/websocket/client.ts';
 
   // Game state
   let gameState: GameState | null = null;
@@ -15,6 +16,7 @@
   let isMyTurn: boolean = false;
   let timeRemaining: number | null = null;
   let gameTimer: number | null = null;
+  let wsClient: any = null;
 
   // Game lifecycle
   onMount(() => {
@@ -25,18 +27,45 @@
         playerName = prompt('Enter your name:') || `Player${Math.floor(Math.random() * 1000)}`;
         localStorage.setItem('ttt-player-name', playerName);
       }
-      playerId = generatePlayerId(playerName);
+
+      // Initialize WebSocket client
+      wsClient = getWebSocketClient();
+      setupWebSocketCallbacks();
+      wsClient.connect();
     }
   });
 
-  $: if (browser && playerId) {
-    console.log('Frontend playerId:', playerId);
+  onDestroy(() => {
+    if (wsClient) {
+      if (gameState) {
+        wsClient.unsubscribeFromGame(gameState.gameId);
+      }
+      wsClient.disconnect();
+    }
+    stopGameTimer();
+  });
+
+  function setupWebSocketCallbacks() {
+    wsClient.onGameUpdate((data: any) => {
+      console.log('Received game update:', data);
+      updateGameStateFromWebSocket(data);
+    });
+
+    wsClient.onPlayerJoined((data: any) => {
+      console.log('Player joined:', data);
+      handlePlayerJoined(data);
+    });
+
+    wsClient.onError((error: string) => {
+      console.error('WebSocket error:', error);
+      alert(`Connection error: ${error}`);
+    });
   }
 
   // API calls
   async function createNewGame() {
     try {
-      console.log('Creating game with playerName:', playerName, 'playerId:', playerId);
+      console.log('Creating game with playerName:', playerName);
       const response = await fetch('/api/game/new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,15 +78,19 @@
 
       const result = await response.json();
 
-      if (result.status === 'ACTIVE') {
-        // Game started immediately
-        await loadGameState(result.gameId);
-        await loadGameHistory();
-      } else {
-        // Waiting for opponent
-        await loadGameState(result.gameId);
-        startPollingForOpponent();
+      // Update our playerId with the one returned from server
+      playerId = result.playerId;
+      console.log('Received playerId from server:', playerId);
+
+      // Load the initial game state
+      await loadGameState(result.gameId);
+
+      // Subscribe to WebSocket updates for this game
+      if (wsClient && gameState) {
+        wsClient.subscribeToGame(gameState.gameId, playerId);
       }
+
+      await loadGameHistory();
     } catch (error) {
       console.error('Error creating game:', error);
       alert('Failed to create game. Please try again.');
@@ -70,17 +103,37 @@
       if (!response.ok) throw new Error('Failed to load game');
 
       const data = await response.json();
+
+      // If we don't have a playerId yet, try to determine it based on our player name
+      if (!playerId && data.player1 === playerName) {
+        playerId = data.player1Id;
+        console.log('Set playerId to player1 ID:', playerId);
+      } else if (!playerId && data.player2 === playerName) {
+        playerId = data.player2Id;
+        console.log('Set playerId to player2 ID:', playerId);
+      }
+
+      // Create the GameState object with correct player IDs from the server
       gameState = {
         gameId: data.gameId,
         board: data.board,
         status: data.status,
-        player1: { id: playerId, symbol: 'X', name: data.player1 },
-        player2: data.player2 ? { id: 'other', symbol: 'O', name: data.player2 } : undefined,
-        lastPlayer: '',
+        player1: {
+          id: data.player1Id,
+          symbol: 'X',
+          name: data.player1
+        },
+        player2: data.player2 ? {
+          id: data.player2Id,
+          symbol: 'O',
+          name: data.player2
+        } : undefined,
+        lastPlayer: data.lastPlayer || '',
         createdAt: Date.now(),
         lastMoveAt: data.lastMoveAt
       };
 
+      console.log('Game state loaded. My playerId:', playerId, 'My name:', playerName);
       updateGameState(data);
     } catch (error) {
       console.error('Error loading game:', error);
@@ -104,17 +157,9 @@
         return;
       }
 
-      const result = await response.json();
-      updateGameState(result);
-
-      if (result.status !== 'ACTIVE') {
-        // Game ended
-        stopGameTimer();
-        await loadGameHistory();
-      } else {
-        // Continue polling for opponent's move
-        startPollingForMove();
-      }
+      // Note: We don't need to update the game state here anymore
+      // The WebSocket will send us the update automatically
+      console.log('Move submitted successfully, waiting for WebSocket update...');
     } catch (error) {
       console.error('Error making move:', error);
       alert('Failed to make move. Please try again.');
@@ -132,7 +177,7 @@
       });
 
       if (response.ok) {
-        await loadGameState(gameState.gameId);
+        // WebSocket will notify us of the game state change
         stopGameTimer();
       }
     } catch (error) {
@@ -142,49 +187,82 @@
 
   async function loadGameHistory() {
     // This would call a history API endpoint when implemented
-    // For now, we'll skip it
     gameHistory = null;
   }
 
-  // Game state management
-  function updateGameState(data: any) {
-    if (!gameState) return;
+  // WebSocket event handlers
+  function updateGameStateFromWebSocket(data: any) {
+    if (!gameState || !playerId) return;
+
+    console.log('Updating game state from WebSocket:', data);
 
     gameState.board = data.board;
     gameState.status = data.status;
+    gameState.lastPlayer = data.lastPlayer;
+    gameState.lastMoveAt = data.lastMoveAt;
 
-    // Determine if it's my turn
-    const mySymbol = gameState.player1.name === playerName ? 'X' : 'O';
+    // Determine if it's my turn based on actual player ID comparison
+    const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
     isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
+
+    console.log('Turn update - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
 
     if (isMyTurn) {
       startGameTimer();
     } else {
       stopGameTimer();
     }
+
+    // If game ended, load history
+    if (data.status !== 'ACTIVE' && data.status !== 'PENDING') {
+      loadGameHistory();
+    }
   }
 
-  function startPollingForOpponent() {
-    const pollInterval = setInterval(async () => {
-      if (gameState) {
-        await loadGameState(gameState.gameId);
-        if (gameState.status === 'ACTIVE') {
-          clearInterval(pollInterval);
-          await loadGameHistory();
-        }
-      }
-    }, 2000);
+  function handlePlayerJoined(data: any) {
+    if (!gameState) return;
+
+    console.log('Handling player joined:', data);
+
+    // Update game state with new player info
+    gameState.status = data.status;
+    gameState.player2 = data.player2 ? {
+      id: data.player2Id,
+      symbol: 'O',
+      name: data.player2
+    } : undefined;
+    gameState.lastPlayer = data.lastPlayer;
+    gameState.lastMoveAt = data.lastMoveAt;
+
+    // Check if it's now our turn (X goes first)
+    const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
+    isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
+
+    console.log('Player joined - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
+
+    if (isMyTurn) {
+      startGameTimer();
+    }
   }
 
-  function startPollingForMove() {
-    const pollInterval = setInterval(async () => {
-      if (gameState && gameState.status === 'ACTIVE') {
-        await loadGameState(gameState.gameId);
-        if (isMyTurn || gameState.status !== 'ACTIVE') {
-          clearInterval(pollInterval);
-        }
-      }
-    }, 1000);
+  // Game state management
+  function updateGameState(data: any) {
+    if (!gameState || !playerId) return;
+
+    gameState.board = data.board;
+    gameState.status = data.status;
+
+    // Determine if it's my turn based on actual player ID comparison
+    const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
+    isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
+
+    console.log('Initial turn setup - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
+
+    if (isMyTurn) {
+      startGameTimer();
+    } else {
+      stopGameTimer();
+    }
   }
 
   function startGameTimer() {
@@ -212,18 +290,14 @@
   }
 
   // Utility functions
-  function generatePlayerId(name: string): string {
-    return `player_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-  }
-
   function getCurrentPlayerSymbol(): 'X' | 'O' | null {
-    if (!gameState || gameState.status !== 'ACTIVE') return null;
-    return gameState.player1.name === playerName ? 'X' : 'O';
+    if (!gameState || gameState.status !== 'ACTIVE' || !playerId) return null;
+    return gameState.player1.id === playerId ? 'X' : 'O';
   }
 
   function getOpponentName(): string | null {
-    if (!gameState) return null;
-    return gameState.player1.name === playerName ? gameState.player2?.name || null : gameState.player1.name;
+    if (!gameState || !playerId) return null;
+    return gameState.player1.id === playerId ? gameState.player2?.name || null : gameState.player1.name;
   }
 
   // Reactive statements

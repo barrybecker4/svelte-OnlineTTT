@@ -5,7 +5,8 @@ import { GameStorage } from '$lib/storage/games.ts';
 import { HistoryStorage } from '$lib/storage/history.ts';
 import { makeMove } from '$lib/game/logic.ts';
 import { validateMove, GameValidationError } from '$lib/game/validation.ts';
-import { getPlayerSymbol } from '$lib/game/state.ts';
+import { getPlayerSymbol, getCurrentPlayer } from '$lib/game/state.ts';
+import { notifyGameUpdate } from '$lib/server/websocket.ts';
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
   try {
@@ -55,12 +56,26 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
       await historyStorage.addGameToHistory(updatedGame);
     }
 
+    // Send WebSocket notification to all players in the game
+    if (platform?.env.WEBSOCKET_HIBERNATION_SERVER) {
+      try {
+        await notifyGameUpdate(updatedGame.gameId, updatedGame, platform.env.WEBSOCKET_HIBERNATION_SERVER);
+      } catch (error) {
+        console.error('Failed to send WebSocket notification:', error);
+        // Don't fail the request if WebSocket notification fails
+      }
+    }
+
+    const nextPlayer = getCurrentPlayer(updatedGame);
+
     return json({
       gameId: updatedGame.gameId,
       board: updatedGame.board,
       status: updatedGame.status,
-      nextPlayer: moveResult.nextPlayer,
-      winningPositions: moveResult.winningPositions
+      nextPlayer,
+      winningPositions: moveResult.winningPositions,
+      lastPlayer: updatedGame.lastPlayer,
+      lastMoveAt: updatedGame.lastMoveAt
     });
   } catch (error) {
     console.error('Error in /api/game/[gameId]/move:', error);

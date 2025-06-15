@@ -5,6 +5,11 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
+  build: {
+    rollupOptions: {
+      external: ['node:async_hooks']
+    }
+  },
   test: {
     projects: [
       {

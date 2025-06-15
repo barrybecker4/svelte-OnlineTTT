@@ -10,8 +10,8 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
     const kv = new KVStorage(platform!);
     const gameStorage = new GameStorage(kv);
-    const game = await gameStorage.getGame(gameId);
 
+    const game = await gameStorage.getGame(gameId);
     if (!game) {
       return json({ error: 'Game not found' }, { status: 404 });
     }
@@ -22,9 +22,12 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       gameId: game.gameId,
       board: game.board,
       status: game.status,
-      nextPlayer,
       player1: game.player1.name,
+      player1Id: game.player1.id,  // Include player1 ID
       player2: game.player2?.name || null,
+      player2Id: game.player2?.id || null,  // Include player2 ID
+      nextPlayer,
+      lastPlayer: game.lastPlayer,
       lastMoveAt: game.lastMoveAt
     });
   } catch (error) {
