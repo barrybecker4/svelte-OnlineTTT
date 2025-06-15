@@ -10,7 +10,7 @@ declare global {
     interface PageState {}
     interface Platform {
       env: {
-        GAMES_KV: KVNamespace;
+        TTT_GAME_KV: KVNamespace;
         WEBSOCKET_HIBERNATION_SERVER?: DurableObjectNamespace;
       };
       context: {
