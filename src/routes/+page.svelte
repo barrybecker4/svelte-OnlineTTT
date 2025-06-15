@@ -52,7 +52,7 @@
     });
 
     wsClient.onPlayerJoined((data: any) => {
-      console.log('Player joined:', data);
+      console.log('Player joined notification received:', data);
       handlePlayerJoined(data);
     });
 
@@ -66,6 +66,37 @@
   async function createNewGame() {
     try {
       console.log('Creating game with playerName:', playerName);
+
+      // Check if we're in local development
+      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      console.log('Environment: ', isLocalDev ? 'Local Development' : 'Production');
+
+      // Only try WebSocket in production
+      let useWebSocket = !isLocalDev && wsClient;
+
+      if (useWebSocket) {
+        console.log('Checking WebSocket connection...');
+        try {
+          if (!wsClient.isConnected()) {
+            console.log('WebSocket not connected, attempting to connect...');
+            await wsClient.connect();
+            // Give it a moment to connect
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+
+          if (!wsClient.isConnected()) {
+            console.warn('WebSocket connection failed, continuing without WebSocket');
+            useWebSocket = false;
+          }
+        } catch (wsError) {
+          console.warn('WebSocket error, continuing without WebSocket:', wsError);
+          useWebSocket = false;
+        }
+      } else {
+        console.log('Skipping WebSocket (local development or not available)');
+      }
+
+      console.log('Making API call to /api/game/new...');
       const response = await fetch('/api/game/new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,27 +104,43 @@
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create game');
+        let errorMessage;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || `HTTP ${response.status}`;
+        } catch {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
+      console.log('Game created successfully:', result);
 
       // Update our playerId with the one returned from server
       playerId = result.playerId;
-      console.log('Received playerId from server:', playerId);
+      console.log('Player ID:', playerId);
 
       // Load the initial game state
       await loadGameState(result.gameId);
 
-      // Subscribe to WebSocket updates for this game
-      if (wsClient && gameState) {
-        wsClient.subscribeToGame(gameState.gameId, playerId);
+      // Subscribe to WebSocket updates only if available
+      if (useWebSocket && wsClient && gameState) {
+        console.log('Subscribing to WebSocket updates...');
+        try {
+          wsClient.subscribeToGame(gameState.gameId, playerId);
+          console.log('WebSocket subscription successful');
+        } catch (wsError) {
+          console.warn('WebSocket subscription failed:', wsError);
+        }
       }
 
       await loadGameHistory();
+      console.log('Game setup completed successfully');
+
     } catch (error) {
       console.error('Error creating game:', error);
-      alert('Failed to create game. Please try again.');
+      alert(`Failed to create game: ${error.message || 'Unknown error'}`);
     }
   }
 
@@ -190,7 +237,33 @@
     gameHistory = null;
   }
 
-  // WebSocket event handlers
+  // Game state management
+  function updateGameState(data: any) {
+    if (!gameState || !playerId) return;
+
+    gameState.board = data.board;
+    gameState.status = data.status;
+
+    // Determine if it's my turn based on actual player ID comparison
+    const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
+
+    // For PENDING games, only player 1 (X) should be "ready" but not actively playing
+    if (data.status === 'PENDING') {
+      isMyTurn = false; // No moves can be made in PENDING state
+      console.log('Game is PENDING - waiting for second player');
+    } else {
+      isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
+      console.log('Turn setup - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
+    }
+
+    if (isMyTurn) {
+      startGameTimer();
+    } else {
+      stopGameTimer();
+    }
+  }
+
+  // Also update the WebSocket handlers
   function updateGameStateFromWebSocket(data: any) {
     if (!gameState || !playerId) return;
 
@@ -203,9 +276,15 @@
 
     // Determine if it's my turn based on actual player ID comparison
     const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
-    isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
 
-    console.log('Turn update - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
+    // Handle PENDING vs ACTIVE states properly
+    if (data.status === 'PENDING') {
+      isMyTurn = false; // Can't make moves in PENDING state
+      console.log('WebSocket update - Game still PENDING');
+    } else {
+      isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
+      console.log('WebSocket turn update - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
+    }
 
     if (isMyTurn) {
       startGameTimer();
@@ -234,34 +313,14 @@
     gameState.lastPlayer = data.lastPlayer;
     gameState.lastMoveAt = data.lastMoveAt;
 
-    // Check if it's now our turn (X goes first)
+    // Now the game should be ACTIVE and X goes first
     const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
     isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
 
-    console.log('Player joined - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
+    console.log('Player joined - Game status:', data.status, 'My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
 
     if (isMyTurn) {
       startGameTimer();
-    }
-  }
-
-  // Game state management
-  function updateGameState(data: any) {
-    if (!gameState || !playerId) return;
-
-    gameState.board = data.board;
-    gameState.status = data.status;
-
-    // Determine if it's my turn based on actual player ID comparison
-    const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
-    isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
-
-    console.log('Initial turn setup - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
-
-    if (isMyTurn) {
-      startGameTimer();
-    } else {
-      stopGameTimer();
     }
   }
 
@@ -326,6 +385,17 @@
       {isMyTurn}
       {timeRemaining}
     />
+
+    <!-- ADD THIS REFRESH BUTTON SECTION -->
+    {#if gameState.status === 'PENDING'}
+      <div class="pending-refresh">
+        <p>Waiting for opponent to join...</p>
+        <button class="refresh-btn" on:click={() => location.reload()}>
+          🔄 Check for opponent
+        </button>
+        <p class="help-text">Click refresh after your friend joins!</p>
+      </div>
+    {/if}
 
     <GameBoard
       board={gameState.board}
@@ -394,5 +464,36 @@
     header h1 {
       font-size: 2rem;
     }
+  }
+
+  .pending-refresh {
+    text-align: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin: 16px 0;
+  }
+
+  .refresh-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 1em;
+    margin: 8px 0;
+    transition: background-color 0.2s;
+  }
+
+  .refresh-btn:hover {
+    background: #0056b3;
+  }
+
+  .help-text {
+    font-size: 0.9em;
+    color: #6c757d;
+    margin: 8px 0 0 0;
   }
 </style>

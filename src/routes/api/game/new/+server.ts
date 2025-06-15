@@ -1,3 +1,6 @@
+// Updated src/routes/api/game/new/+server.ts
+// This version gracefully handles missing WebSocket Durable Objects in local development
+
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
 import { KVStorage } from '$lib/storage/kv.ts';
@@ -27,15 +30,21 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		const updatedGame = addPlayer2ToGame(availableGame, playerName);
 		await gameStorage.saveGame(updatedGame);
 		
-		// Notify player 1 that player 2 has joined via WebSocket
+		// Try to notify player 1 that player 2 has joined via WebSocket
+		// This will fail gracefully in local development
 		if (platform?.env.WEBSOCKET_HIBERNATION_SERVER) {
 			try {
+				console.log('Attempting to send WebSocket notification...');
 				await notifyPlayerJoined(updatedGame.gameId, updatedGame, platform.env.WEBSOCKET_HIBERNATION_SERVER);
+				console.log('WebSocket notification sent successfully');
 			} catch (error) {
-				console.error('Failed to send WebSocket notification for player joined:', error);
+				console.warn('WebSocket notification failed (expected in local development):', error.message || error);
+				// Don't fail the request - WebSocket is optional in development
 			}
+		} else {
+			console.log('WebSocket service not available (local development mode)');
 		}
-		
+
 		return json({
 			gameId: updatedGame.gameId,
 			player1: updatedGame.player1.name,
@@ -48,7 +57,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		// Create new game as player 1
 		const newGame = createNewGame(playerName);
 		await gameStorage.saveGame(newGame);
-		
+
 		return json({
 			gameId: newGame.gameId,
 			player1: newGame.player1.name,

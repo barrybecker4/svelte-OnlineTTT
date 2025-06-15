@@ -96,12 +96,47 @@ export class GameWebSocketClient {
     }
   }
 
+  public isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  // Also add a method to wait for connection
+  public async waitForConnection(maxWaitMs: number = 5000): Promise<boolean> {
+    if (this.isConnected()) {
+      return true;
+    }
+
+    if (!this.isConnecting && !this.ws) {
+      await this.connect();
+    }
+
+    const startTime = Date.now();
+    while (Date.now() - startTime < maxWaitMs) {
+      if (this.isConnected()) {
+        return true;
+      }
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    return false;
+  }
+
   subscribeToGame(gameId: string, playerId: string): void {
     if (!this.isConnected()) {
-      console.warn('WebSocket not connected, cannot subscribe to game');
+      console.warn('WebSocket not connected, attempting to connect first...');
+      this.connect().then(() => {
+        if (this.isConnected()) {
+          this.send({
+            type: 'subscribe',
+            gameId,
+            playerId
+          });
+        }
+      });
       return;
     }
 
+    console.log(`Subscribing to game ${gameId} as player ${playerId}`);
     this.send({
       type: 'subscribe',
       gameId,
@@ -130,10 +165,6 @@ export class GameWebSocketClient {
 
   onError(callback: ErrorCallback): void {
     this.callbacks.error = callback;
-  }
-
-  private isConnected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN;
   }
 
   private getWebSocketUrl(): string {

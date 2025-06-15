@@ -64,27 +64,36 @@ export function isGameComplete(game: GameState): boolean {
   return game.status !== 'PENDING' && game.status !== 'ACTIVE';
 }
 
+
+/**
+ * Get the player whose turn it is (or would be once game starts)
+ */
+export function getCurrentPlayer(game: GameState): PlayerSymbol | null {
+  // For PENDING games, X should go first when the game starts
+  if (game.status === 'PENDING') return 'X';
+
+  // For non-active games (finished games), return null
+  if (game.status !== 'ACTIVE') return null;
+
+  // For active games, use the normal logic
+  if (game.lastPlayer === '') return 'X';
+
+  return game.lastPlayer === 'X' ? 'O' : 'X';
+}
+
 /**
  * Check if it's a specific player's turn
  */
 export function isPlayerTurn(game: GameState, playerSymbol: PlayerSymbol): boolean {
+  // For PENDING games, only X (player 1) should be ready
+  if (game.status === 'PENDING') return playerSymbol === 'X';
+
   if (game.status !== 'ACTIVE') return false;
 
   // X goes first, then alternate based on lastPlayer
   if (game.lastPlayer === '') return playerSymbol === 'X';
 
   return game.lastPlayer !== playerSymbol;
-}
-
-/**
- * Get the player whose turn it is
- */
-export function getCurrentPlayer(game: GameState): PlayerSymbol | null {
-  if (game.status !== 'ACTIVE') return null;
-
-  if (game.lastPlayer === '') return 'X';
-
-  return game.lastPlayer === 'X' ? 'O' : 'X';
 }
 
 /**
