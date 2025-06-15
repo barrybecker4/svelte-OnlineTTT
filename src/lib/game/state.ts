@@ -45,11 +45,7 @@ export function addPlayer2ToGame(game: GameState, player2Name: string): GameStat
 /**
  * Mark a game as terminated by resignation or timeout
  */
-export function terminateGame(
-  game: GameState,
-  resigningPlayer: PlayerSymbol,
-  reason: 'RESIGN' | 'TIMEOUT'
-): GameState {
+export function terminateGame(game: GameState, resigningPlayer: PlayerSymbol, reason: 'RESIGN' | 'TIMEOUT'): GameState {
   const winningPlayer = resigningPlayer === 'X' ? 'O' : 'X';
   const status = `${winningPlayer}_BY_${reason}` as const;
 

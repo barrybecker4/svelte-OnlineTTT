@@ -1,41 +1,60 @@
+// Simple in-memory storage for development
+const mockStorage = new Map<string, string>();
+
 export class KVStorage {
-	private kv: KVNamespace | null;
+  private kv: KVNamespace | null;
+  private useMock: boolean;
 
-	constructor(platform?: App.Platform) {
-		this.kv = platform?.env?.TTT_GAME_KV || null;
-	}
+  constructor(platform?: App.Platform) {
+    this.kv = platform?.env?.TTT_GAME_KV || null;
+    this.useMock = !this.kv;
 
-	async get<T>(key: string): Promise<T | null> {
-		if (!this.kv) {
-			console.log('KV not available, using mock storage');
-			return null; // Mock behavior for development
-		}
-		const value = await this.kv.get(key);
-		return value ? JSON.parse(value) : null;
-	}
+    if (this.useMock) {
+      console.log('🔧 Using mock KV storage for development');
+    }
+  }
 
-	async put<T>(key: string, value: T, expirationTtl?: number): Promise<void> {
-		if (!this.kv) {
-			console.log('KV not available, mock putting:', key);
-			return; // Mock behavior for development
-		}
-		const options = expirationTtl ? { expirationTtl } : undefined;
-		await this.kv.put(key, JSON.stringify(value), options);
-	}
+  async get<T>(key: string): Promise<T | null> {
+    if (this.useMock) {
+      const value = mockStorage.get(key);
+      return value ? JSON.parse(value) : null;
+    }
 
-	async delete(key: string): Promise<void> {
-		if (!this.kv) {
-			console.log('KV not available, mock deleting:', key);
-			return;
-		}
-		await this.kv.delete(key);
-	}
+    const value = await this.kv!.get(key);
+    return value ? JSON.parse(value) : null;
+  }
 
-	async list(prefix?: string): Promise<KVNamespaceListResult<unknown, string>> {
-		if (!this.kv) {
-			console.log('KV not available, returning empty list');
-			return { keys: [], list_complete: true, cursor: '' };
-		}
-		return await this.kv.list({ prefix });
-	}
+  async put<T>(key: string, value: T, expirationTtl?: number): Promise<void> {
+    if (this.useMock) {
+      mockStorage.set(key, JSON.stringify(value));
+      // Simulate TTL by setting a timeout to delete
+      if (expirationTtl) {
+        setTimeout(() => mockStorage.delete(key), expirationTtl * 1000);
+      }
+      return;
+    }
+
+    const options = expirationTtl ? { expirationTtl } : undefined;
+    await this.kv!.put(key, JSON.stringify(value), options);
+  }
+
+  async delete(key: string): Promise<void> {
+    if (this.useMock) {
+      mockStorage.delete(key);
+      return;
+    }
+
+    await this.kv!.delete(key);
+  }
+
+  async list(prefix?: string): Promise<KVNamespaceListResult<unknown, string>> {
+    if (this.useMock) {
+      const keys = Array.from(mockStorage.keys())
+        .filter((key) => !prefix || key.startsWith(prefix))
+        .map((name) => ({ name }));
+      return { keys, list_complete: true, cursor: '' };
+    }
+
+    return await this.kv!.list({ prefix });
+  }
 }

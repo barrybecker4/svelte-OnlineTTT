@@ -5,31 +5,30 @@ import { GameStorage } from '$lib/storage/games.ts';
 import { getCurrentPlayer } from '$lib/game/state.ts';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
-	try {
-		const { gameId } = params;
+  try {
+    const { gameId } = params;
 
-		const kv = new KVStorage(platform!);
-		const gameStorage = new GameStorage(kv);
-		const game = await gameStorage.getGame(gameId);
+    const kv = new KVStorage(platform!);
+    const gameStorage = new GameStorage(kv);
+    const game = await gameStorage.getGame(gameId);
 
-		if (!game) {
-			return json({ error: 'Game not found' }, { status: 404 });
-		}
+    if (!game) {
+      return json({ error: 'Game not found' }, { status: 404 });
+    }
 
-		const nextPlayer = getCurrentPlayer(game);
+    const nextPlayer = getCurrentPlayer(game);
 
-		return json({
-			gameId: game.gameId,
-			board: game.board,
-			status: game.status,
-			nextPlayer,
-			player1: game.player1.name,
-			player2: game.player2?.name || null,
-			lastMoveAt: game.lastMoveAt
-		});
-
-	} catch (error) {
-		console.error('Error in /api/game/[gameId]:', error);
-		return json({ error: 'Internal server error' }, { status: 500 });
-	}
+    return json({
+      gameId: game.gameId,
+      board: game.board,
+      status: game.status,
+      nextPlayer,
+      player1: game.player1.name,
+      player2: game.player2?.name || null,
+      lastMoveAt: game.lastMoveAt
+    });
+  } catch (error) {
+    console.error('Error in /api/game/[gameId]:', error);
+    return json({ error: 'Internal server error' }, { status: 500 });
+  }
 };

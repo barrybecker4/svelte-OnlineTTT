@@ -3,12 +3,7 @@ import type { GameStatus, MoveResult, PlayerSymbol } from '../types/game.ts';
 /**
  * Determines the new board state after a player makes a move
  */
-export function makeMove(
-  playerSymbol: PlayerSymbol,
-  cellPos: number,
-  currentBoard: string
-): MoveResult {
-
+export function makeMove(playerSymbol: PlayerSymbol, cellPos: number, currentBoard: string): MoveResult {
   if (cellPos < 0 || cellPos > 8) {
     throw new Error('Invalid cell position. Must be 0-8.');
   }
@@ -18,10 +13,7 @@ export function makeMove(
   }
 
   // Make the move
-  const newBoard =
-    currentBoard.substring(0, cellPos) +
-    playerSymbol +
-    currentBoard.substring(cellPos + 1);
+  const newBoard = currentBoard.substring(0, cellPos) + playerSymbol + currentBoard.substring(cellPos + 1);
 
   // Check for win conditions
   const winningPositions = checkForWin(newBoard);
@@ -110,11 +102,7 @@ function checkDiagonals(board: string): number[] | null {
  */
 function checkTriple(positions: number[], board: string): boolean {
   const first = board.charAt(positions[0]);
-  return (
-    first !== '_' &&
-    first === board[positions[1]] &&
-    first === board[positions[2]]
-  );
+  return first !== '_' && first === board[positions[1]] && first === board[positions[2]];
 }
 
 /**

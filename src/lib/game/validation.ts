@@ -11,11 +11,7 @@ export class GameValidationError extends Error {
 /**
  * Validate that a move is legal
  */
-export function validateMove(
-  game: GameState,
-  playerId: string,
-  cellPosition: number
-): void {
+export function validateMove(game: GameState, playerId: string, cellPosition: number): void {
   // Check if game is active
   if (game.status !== 'ACTIVE') {
     throw new GameValidationError('Game is not active');
