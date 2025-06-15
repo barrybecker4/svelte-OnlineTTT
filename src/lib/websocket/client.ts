@@ -47,6 +47,20 @@ export class GameWebSocketClient {
       const wsUrl = this.getWebSocketUrl();
       console.log('Connecting to WebSocket:', wsUrl);
 
+      // First check if the WebSocket service is available
+      try {
+        const checkResponse = await fetch('/api/websocket', { method: 'HEAD' });
+        if (checkResponse.status === 503) {
+          console.log('WebSocket service not available, skipping WebSocket functionality');
+          this.isConnecting = false;
+          return;
+        }
+      } catch (fetchError) {
+        console.log('Cannot check WebSocket availability, skipping WebSocket functionality');
+        this.isConnecting = false;
+        return;
+      }
+
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
@@ -70,21 +84,26 @@ export class GameWebSocketClient {
         console.log('WebSocket closed:', event.code, event.reason);
         this.isConnecting = false;
         this.stopPing();
-        this.scheduleReconnect();
+
+        // Only try to reconnect if it's not a service unavailable error
+        if (event.code !== 1011 && event.code !== 1012) {
+          this.scheduleReconnect();
+        } else {
+          console.log('WebSocket service unavailable, not attempting reconnect');
+        }
       };
 
       this.ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         this.isConnecting = false;
-        if (this.callbacks.error) {
-          this.callbacks.error('WebSocket connection error');
-        }
+        // Don't call error callback for connection failures in production
+        // The user doesn't need to see these alerts
       };
 
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       this.isConnecting = false;
-      this.scheduleReconnect();
+      // Don't schedule reconnect if we can't even create the connection
     }
   }
 
@@ -100,60 +119,59 @@ export class GameWebSocketClient {
     return this.ws?.readyState === WebSocket.OPEN;
   }
 
-  // Also add a method to wait for connection
   public async waitForConnection(maxWaitMs: number = 5000): Promise<boolean> {
-    if (this.isConnected()) {
-      return true;
-    }
-
-    if (!this.isConnecting && !this.ws) {
-      await this.connect();
-    }
-
-    const startTime = Date.now();
-    while (Date.now() - startTime < maxWaitMs) {
       if (this.isConnected()) {
         return true;
       }
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
 
-    return false;
-  }
+      if (!this.isConnecting && !this.ws) {
+        await this.connect();
+      }
 
-  subscribeToGame(gameId: string, playerId: string): void {
-    if (!this.isConnected()) {
-      console.warn('WebSocket not connected, attempting to connect first...');
-      this.connect().then(() => {
+      const startTime = Date.now();
+      while (Date.now() - startTime < maxWaitMs) {
         if (this.isConnected()) {
-          this.send({
-            type: 'subscribe',
-            gameId,
-            playerId
-          });
+          return true;
         }
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      return false;
+    }
+
+    subscribeToGame(gameId: string, playerId: string): void {
+      if (!this.isConnected()) {
+        console.warn('WebSocket not connected, attempting to connect first...');
+        this.connect().then(() => {
+          if (this.isConnected()) {
+            this.send({
+              type: 'subscribe',
+              gameId,
+              playerId
+            });
+          }
+        });
+        return;
+      }
+
+      console.log(`Subscribing to game ${gameId} as player ${playerId}`);
+      this.send({
+        type: 'subscribe',
+        gameId,
+        playerId
       });
-      return;
     }
 
-    console.log(`Subscribing to game ${gameId} as player ${playerId}`);
-    this.send({
-      type: 'subscribe',
-      gameId,
-      playerId
-    });
-  }
+    unsubscribeFromGame(gameId: string): void {
+      if (!this.isConnected()) {
+        return;
+      }
 
-  unsubscribeFromGame(gameId: string): void {
-    if (!this.isConnected()) {
-      return;
+      this.send({
+        type: 'unsubscribe',
+        gameId
+      });
     }
-
-    this.send({
-      type: 'unsubscribe',
-      gameId
-    });
-  }
 
   onGameUpdate(callback: GameUpdateCallback): void {
     this.callbacks.gameUpdate = callback;
@@ -239,15 +257,13 @@ export class GameWebSocketClient {
 
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnect attempts reached');
-      if (this.callbacks.error) {
-        this.callbacks.error('Connection lost. Please refresh the page.');
-      }
+      console.log('Max reconnect attempts reached, giving up on WebSocket');
+      // Don't show error to user, just log it
       return;
     }
 
     this.reconnectAttempts++;
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1); // Exponential backoff
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
     console.log(`Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
 
