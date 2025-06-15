@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
-  import GameBoard from '$lib/components/Game/GameBoard.svelte';
-  import GameStatus from '$lib/components/Game/GameStatus.svelte';
-  import GameControls from '$lib/components/Game/GameControls.svelte';
-  import PlayerHistory from '$lib/components/Game/PlayerHistory.svelte';
+  import GameBoard from '$lib/components/game/GameBoard.svelte';
+  import GameStatus from '$lib/components/game/GameStatus.svelte';
+  import GameControls from '$lib/components/game/GameControls.svelte';
+  import PlayerHistory from '$lib/components/game/PlayerHistory.svelte';
   import type { GameState, GameHistory } from '$lib/types/game.ts';
   import { getWebSocketClient } from '$lib/websocket/client.ts';
 
