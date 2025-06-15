@@ -5,7 +5,6 @@ I originally created it using Google App Script and Firestore in 2020.
 
 A Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
-
 ## Developing
 
 Start a development server:
@@ -27,9 +26,8 @@ npm run build
 
 You can preview the production build with `npm run preview`.
 
-> To deploy your app, we use 
+> To deploy your app, we use
 
 We use Cloudflare and wrangler for deployment.
 It was installed with
 `npm install @cloudflare/workers-types wrangler`
-
