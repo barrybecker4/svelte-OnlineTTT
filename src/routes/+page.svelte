@@ -29,48 +29,32 @@
         localStorage.setItem('ttt-player-name', playerName);
       }
 
-      // Initialize WebSocket client
+      // Initialize WebSocket client but don't connect yet
       wsClient = getWebSocketClient();
       setupWebSocketCallbacks();
-      wsClient.connect();
     }
   });
 
   function setupWebSocketCallbacks() {
     wsClient.onGameUpdate((data: any) => {
-      console.log('Received game update:', data);
+      console.log('📩 Received game update:', data);
       updateGameStateFromWebSocket(data);
     });
 
     wsClient.onPlayerJoined((data: any) => {
-      console.log('Player joined notification received:', data);
+      console.log('👋 Player joined notification received:', data);
       handlePlayerJoined(data);
     });
 
     wsClient.onError((error: string) => {
-      console.error('WebSocket error:', error);
+      console.error('❌ WebSocket error:', error);
       alert(`Connection error: ${error}`);
     });
-  }
-
-  async function checkWebSocketAvailability() {
-    try {
-      const response = await fetch('/api/websocket', {
-        method: 'HEAD'  // Just check if endpoint exists
-      });
-      return response.status !== 503;
-    } catch (error) {
-      return false;
-    }
   }
 
   async function createNewGame() {
     try {
       console.log('Creating game with playerName:', playerName);
-
-      // Check if WebSocket service is available (remove the local dev check)
-      const wsAvailable = await checkWebSocketAvailability();
-      console.log('WebSocket service available:', wsAvailable);
 
       // Create the game via HTTP API first
       const response = await fetch('/api/game/new', {
@@ -91,33 +75,32 @@
       console.log('Set playerId to:', playerId);
 
       // Load the full game state
+      console.log('Loading game state for gameId:', data.gameId);
       await loadGameState(data.gameId);
+      
+      console.log('Final gameState after loading:', gameState);
 
-      // Connect to WebSocket with the specific gameId if available
-      if (wsAvailable && wsClient && gameState) {
-        console.log('Connecting to WebSocket for game:', gameState.gameId);
+      // Connect to WebSocket with the specific gameId
+      if (wsClient && gameState) {
+        console.log('Attempting WebSocket connection for game:', gameState.gameId);
         try {
-          // Connect with the specific game ID
+          // Connect directly to the deployed WebSocket worker
           await wsClient.connect(gameState.gameId);
 
           // Give it a moment to connect
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 1000));
 
           if (wsClient.isConnected()) {
-            console.log('Subscribing to WebSocket updates...');
+            console.log('✅ WebSocket connected successfully! Subscribing to updates...');
             wsClient.subscribeToGame(gameState.gameId, playerId);
+            
+            // Start polling as backup for local development where notifications don't work
+            startDevPolling(gameState.gameId);
           } else {
-            console.warn('WebSocket connection failed, using polling instead');
-            startPolling(gameState.gameId);
+            console.warn('❌ WebSocket connection failed');
           }
         } catch (wsError) {
-          console.warn('WebSocket error, using polling instead:', wsError);
-          startPolling(gameState.gameId);
-        }
-      } else {
-        console.log('WebSocket not available, using polling');
-        if (gameState) {
-          startPolling(gameState.gameId);
+          console.error('WebSocket connection error:', wsError);
         }
       }
 
@@ -127,33 +110,43 @@
     }
   }
 
-  // Add this polling function for local development
-  let pollingInterval: number | null = null;
+  // Development-only polling for local development
+  let devPollingInterval: number | null = null;
 
-  function startPolling(gameId: string) {
-    // Clear any existing polling
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
+  function startDevPolling(gameId: string) {
+    if (devPollingInterval) {
+      clearInterval(devPollingInterval);
     }
 
-    // Poll every 2 seconds
-    pollingInterval = setInterval(async () => {
+    console.log('🔄 Starting development polling for game state changes...');
+
+    devPollingInterval = setInterval(async () => {
       try {
-        await loadGameState(gameId);
+        if (gameState) {
+          console.log('📡 Checking for game updates...');
+          await loadGameState(gameId);
+
+          // Stop polling if game is complete
+          if (gameState.status !== 'ACTIVE' && gameState.status !== 'PENDING') {
+            stopDevPolling();
+          }
+        } else {
+          stopDevPolling();
+        }
       } catch (error) {
-        console.error('Polling error:', error);
+        console.error('Dev polling error:', error);
       }
-    }, 2000);
+    }, 1000);
   }
 
-  function stopPolling() {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      pollingInterval = null;
+  function stopDevPolling() {
+    if (devPollingInterval) {
+      clearInterval(devPollingInterval);
+      devPollingInterval = null;
+      console.log('🛑 Stopped development polling');
     }
   }
 
-  // Update the onDestroy function to include polling cleanup
   onDestroy(() => {
     if (wsClient) {
       if (gameState) {
@@ -161,7 +154,7 @@
       }
       wsClient.disconnect();
     }
-    stopPolling(); // Add this line
+    stopDevPolling();
     stopGameTimer();
   });
 
@@ -240,8 +233,18 @@
       return;
     }
 
+    // Check if this position is already taken
+    if (gameState.board[position] !== '_') {
+      console.log('Position already taken:', position);
+      return;
+    }
+
     // Stop the current timer since we're making a move
     stopGameTimer();
+
+    // Prevent duplicate moves by temporarily disabling
+    const wasMyTurn = isMyTurn;
+    isMyTurn = false;
 
     try {
       console.log('Making move at position:', position);
@@ -269,7 +272,9 @@
 
     } catch (error) {
       console.error('Error making move:', error);
-      alert('Failed to make move. Please try again.');
+
+      // Restore turn state if move failed
+      isMyTurn = wasMyTurn;
 
       // Restart timer if move failed and it's still our turn
       if (isMyTurn && gameState?.status === 'ACTIVE') {
@@ -302,33 +307,7 @@
     gameHistory = null;
   }
 
-  // Game state management
-  function updateGameState(data: any) {
-    if (!gameState || !playerId) return;
-
-    gameState.board = data.board;
-    gameState.status = data.status;
-
-    // Determine if it's my turn based on actual player ID comparison
-    const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
-
-    // For PENDING games, only player 1 (X) should be "ready" but not actively playing
-    if (data.status === 'PENDING') {
-      isMyTurn = false; // No moves can be made in PENDING state
-      console.log('Game is PENDING - waiting for second player');
-    } else {
-      isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
-      console.log('Turn setup - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
-    }
-
-    if (isMyTurn) {
-      startGameTimer();
-    } else {
-      stopGameTimer();
-    }
-  }
-
-  // Also update the WebSocket handlers
+  // WebSocket handlers
   function updateGameStateFromWebSocket(data: any) {
     if (!gameState || !playerId) return;
 
@@ -400,9 +379,10 @@
       startGameTimer();
     }
   }
+
+  // Timer functions
   function startGameTimer() {
     // Only start a new timer if we don't already have one running
-    // or if this is genuinely a new turn
     if (gameTimer !== null) {
       return; // Timer already running, don't restart it
     }
@@ -438,29 +418,40 @@
     return gameState.player1.id === playerId ? 'X' : 'O';
   }
 
-  function getOpponentName(): string | null {
-    if (!gameState || !playerId) return null;
-    return gameState.player1.id === playerId ? gameState.player2?.name || null : gameState.player1.name;
+  function isGameActive(): boolean {
+    return gameState?.status === 'ACTIVE';
   }
 
-  // Reactive statements
-  $: canQuit = gameState && (gameState.status === 'ACTIVE' || gameState.status === 'PENDING');
-  $: isInGame = gameState !== null;
+  function canMakeMove(): boolean {
+    const result = isGameActive() && isMyTurn;
+    console.log('canMakeMove():', {
+      isGameActive: isGameActive(),
+      isMyTurn,
+      gameStatus: gameState?.status,
+      playerId,
+      result
+    });
+    return result;
+  }
 </script>
 
-<svelte:head>
-  <title>Online Tic-Tac-Toe</title>
-</svelte:head>
+<div class="container mx-auto max-w-lg p-4">
+  <h1 class="mb-6 text-center text-3xl font-bold">Online Tic-Tac-Toe</h1>
 
-<main class="container">
-  <header>
-    <h1>Online Tic-Tac-Toe</h1>
-    {#if playerName}
-      <p class="player-info">Playing as: <strong>{playerName}</strong></p>
-    {/if}
-  </header>
-
-  {#if gameState}
+  {#if !gameState}
+  <div class="rounded-lg bg-white p-6 shadow-md">
+    <div class="text-center">
+      <h2 class="mb-4 text-xl font-semibold">Ready to Play?</h2>
+      <button
+        on:click={createNewGame}
+        class="rounded bg-blue-500 px-6 py-2 text-white hover:bg-blue-600"
+      >
+        Play
+      </button>
+    </div>
+  </div>
+{:else}
+  <div class="space-y-4">
     <GameStatus
       status={gameState.status}
       currentPlayer={getCurrentPlayerSymbol()}
@@ -477,22 +468,24 @@
       on:cellClick={(e) => makeMove(e.detail.position)}
     />
 
-    <PlayerHistory {gameHistory} currentPlayerName={playerName} opponentName={getOpponentName()} />
-  {:else}
-    <div class="welcome">
-      <p>Welcome to Online Tic-Tac-Toe!</p>
-      <p>Click "Play" to find an opponent or create a new game.</p>
-    </div>
-  {/if}
+    <GameControls
+      gameStatus={gameState?.status || 'PENDING'}
+      canQuit={gameState && (gameState.status === 'ACTIVE' || gameState.status === 'PENDING')}
+      isInGame={gameState !== null}
+      on:newGame={() => { gameState = null; }}
+      on:quitGame={quitGame}
+    />
+  </div>
+{/if}
 
-  <GameControls
-    gameStatus={gameState?.status || 'PENDING'}
-    {canQuit}
-    {isInGame}
-    on:newGame={createNewGame}
-    on:quitGame={quitGame}
+{#if gameHistory}
+  <PlayerHistory
+    {gameHistory}
+    currentPlayerName={playerName}
+    opponentName={gameState?.player1.id === playerId ? gameState.player2?.name || null : gameState?.player1.name}
   />
-</main>
+{/if}
+</div>
 
 <style>
   .container {

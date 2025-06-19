@@ -52,20 +52,7 @@ export class GameWebSocketClient {
       const wsUrl = this.getWebSocketUrl(this.currentGameId);
       console.log('Connecting to WebSocket:', wsUrl);
 
-      // Check if WebSocket service is available
-      try {
-        const checkResponse = await fetch('/api/websocket', { method: 'HEAD' });
-        if (checkResponse.status === 503) {
-          console.log('WebSocket service not available, skipping WebSocket functionality');
-          this.isConnecting = false;
-          return;
-        }
-      } catch (fetchError) {
-        console.log('Cannot check WebSocket availability, skipping WebSocket functionality');
-        this.isConnecting = false;
-        return;
-      }
-
+      // Connect directly - no availability checks needed
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
@@ -101,14 +88,11 @@ export class GameWebSocketClient {
       this.ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         this.isConnecting = false;
-        // Don't call error callback for connection failures in production
-        // The user doesn't need to see these alerts
       };
 
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       this.isConnecting = false;
-      // Don't schedule reconnect if we can't even create the connection
     }
   }
 
@@ -125,24 +109,24 @@ export class GameWebSocketClient {
   }
 
   public async waitForConnection(maxWaitMs: number = 5000): Promise<boolean> {
+    if (this.isConnected()) {
+      return true;
+    }
+
+    if (!this.isConnecting && !this.ws) {
+      await this.connect();
+    }
+
+    const startTime = Date.now();
+    while (Date.now() - startTime < maxWaitMs) {
       if (this.isConnected()) {
         return true;
       }
-
-      if (!this.isConnecting && !this.ws) {
-        await this.connect();
-      }
-
-      const startTime = Date.now();
-      while (Date.now() - startTime < maxWaitMs) {
-        if (this.isConnected()) {
-          return true;
-        }
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-
-      return false;
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
+
+    return false;
+  }
 
   subscribeToGame(gameId: string, playerId: string): void {
     // First connect with the specific gameId
@@ -156,7 +140,6 @@ export class GameWebSocketClient {
       }
     });
   }
-
 
   unsubscribeFromGame(gameId: string): void {
     if (!this.isConnected()) {
@@ -188,18 +171,9 @@ export class GameWebSocketClient {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
-    // Check if we're in local development
-    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-    let host: string;
-    if (isLocalDev) {
-      // For local development, connect directly to your deployed worker
-      host = 'svelte-ttt-websocket.barrybecker4.workers.dev';
-    } else {
-      // For production, you'll need to set up custom domain routing
-      // For now, use the worker URL directly
-      host = 'svelte-ttt-websocket.barrybecker4.workers.dev';
-    }
+    // Always use the deployed WebSocket worker for simplicity
+    // This avoids complex local development setup issues
+    const host = 'svelte-ttt-websocket.barrybecker4.workers.dev';
 
     // Build the WebSocket URL
     let wsUrl = `${protocol}//${host}/websocket`;
@@ -209,6 +183,7 @@ export class GameWebSocketClient {
       wsUrl += `?gameId=${encodeURIComponent(gameId)}`;
     }
 
+    console.log('WebSocket URL:', wsUrl);
     return wsUrl;
   }
 

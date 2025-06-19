@@ -25,7 +25,7 @@ cd svelte-OnlineTTT
 npm install
 ```
 
-### 2. Deploy WebSocket Worker (Durable Objects)
+### 2. Deploy WebSocket Worker (One-time setup)
 
 The WebSocket worker handles real-time game coordination using Cloudflare Durable Objects:
 
@@ -43,68 +43,40 @@ npm run deploy
 cd ..
 ```
 
-**Note**: The WebSocket worker creates a separate Durable Object instance for each game, enabling real-time updates between players. Each game gets its own isolated state management.
+**Note**: The WebSocket worker creates a separate Durable Object instance for each game, enabling real-time updates between players. You only need to deploy this once.
 
-### 3. Configure Frontend WebSocket Connection
-
-Update your WebSocket client to connect to the deployed worker:
-
-1. **Find your worker URL:**
-   ```bash
-   cd websocket-worker
-   wrangler whoami
-   ```
-   Your worker URL will be: `https://svelte-ttt-websocket.YOUR_USERNAME.workers.dev`
-
-2. **Update `src/lib/websocket/client.ts`:**
-   Replace `YOUR_USERNAME` in the `getWebSocketUrl()` method with your actual Cloudflare username:
-   ```typescript
-   private getWebSocketUrl(gameId?: string): string {
-     // ... existing code ...
-     host = 'svelte-ttt-websocket.YOUR_ACTUAL_USERNAME.workers.dev';
-     // ... rest of method
-   }
-   ```
-
-### 4. Test WebSocket Worker
+### 3. Test WebSocket Worker
 
 Verify your WebSocket worker is running:
 
 ```bash
 curl https://svelte-ttt-websocket.YOUR_USERNAME.workers.dev/health
-curl https://svelte-ttt-websocket.barrybecker4.workers.dev/health  (for example)
 
 # Should return: "WebSocket service is running"
 ```
 
-### 5. Local Development
+Replace `YOUR_USERNAME` with your actual Cloudflare username.
 
-For local development, you have two options:
+### 4. Local Development (Recommended)
 
-#### Option A: Simple (Recommended)
-Run SvelteKit locally and connect to deployed WebSocket worker:
+For local development, use the simple setup:
 
 ```bash
 npm run dev
 # Visit http://localhost:5173
 ```
 
-The app will connect to your deployed WebSocket worker for real-time features.
+**How it works:**
+- Frontend runs locally via SvelteKit dev server
+- Connects to your deployed WebSocket worker for real-time features
+- Uses polling fallback for local development (where WebSocket notifications don't work)
+- In production, WebSocket notifications work instantly without polling
 
-#### Option B: Full Local Setup
-Run both the main app and WebSocket worker locally:
+### 5. Test the Game
 
-```bash
-# Terminal 1: Start WebSocket worker locally
-cd websocket-worker
-npm run dev
-
-# Terminal 2: Start main app with Wrangler
-npm run dev:wrangler
-
-# Terminal 3: Start SvelteKit dev server  
-npm run dev
-```
+1. **Create a game** - Enter your name and click "Play"
+2. **Join with second player** - Open another browser tab/window, enter different name, click "Play"
+3. **Play in real-time** - Moves appear within 2 seconds in local development, instantly in production
 
 ### 6. Production Deployment
 
@@ -115,46 +87,46 @@ npm run build
 npm run deploy
 ```
 
-Your app will be available at your Cloudflare Pages URL.
+Your app will be available at your Cloudflare Pages URL with instant real-time updates.
 
 ## How It Works
 
 ### Architecture Overview
 
-1. **Game Creation**: Players create/join games via HTTP API calls to Cloudflare Pages
-2. **Persistent Storage**: Game state, history, and player data stored in Cloudflare KV
-3. **Real-time Updates**: Each game connects to its own Durable Object for instant WebSocket updates
-4. **Global Scale**: Cloudflare automatically distributes your app worldwide
+1. **Game Creation**: Players create/join games via HTTP API calls
+2. **Persistent Storage**: Game state and history stored in Cloudflare KV
+3. **Real-time Updates**: WebSocket connections to deployed Durable Objects
+4. **Local Development**: Polling fallback when WebSocket notifications can't be sent
+5. **Production**: Full WebSocket notifications for instant updates
 
-### Key Components
+### Local vs Production
 
-- **Durable Objects**: One per active game, handles WebSocket connections and real-time coordination
-- **KV Storage**: Permanent game data, player history, matchmaking
-- **SvelteKit App**: Game UI, HTTP APIs, game logic
-- **WebSocket Client**: Handles real-time communication with fallback to polling
+**Local Development:**
+- Simple `npm run dev` setup
+- Connects to deployed WebSocket worker
+- Uses polling for game state updates (2-second intervals)
+- Perfect for development and testing
 
-### Why Both KV and Durable Objects?
-
-- **KV**: Permanent database for game records, history, open games list
-- **Durable Objects**: Temporary real-time coordinator for active games
-- **Together**: Instant gameplay + permanent data storage
+**Production:**
+- Full Cloudflare Pages + Workers environment
+- WebSocket notifications work instantly
+- No polling needed
+- Optimal performance
 
 ## Development Scripts
 
 ```bash
-# Local development
-npm run dev                    # SvelteKit dev server
-npm run dev:wrangler          # Full Cloudflare Pages simulation
+# Local development (recommended)
+npm run dev                    # SvelteKit dev server + deployed WebSocket worker
 
-# WebSocket worker (in websocket-worker/)
-npm run dev                    # Local WebSocket worker
-npm run deploy                 # Deploy WebSocket worker
+# WebSocket worker management
+cd websocket-worker
+npm run deploy                 # Deploy WebSocket worker (one-time setup)
 npm run tail                   # View WebSocket worker logs
 
-# Main app
+# Main app deployment
 npm run build                  # Build for production
 npm run deploy                 # Deploy to Cloudflare Pages
-npm run preview               # Preview production build locally
 
 # Code quality
 npm run lint                   # Lint code
@@ -162,37 +134,60 @@ npm run format                 # Format code
 npm run check                  # Type checking
 ```
 
-## Testing
+## Configuration
 
-1. **Create a game** - Enter your name and click "Play"
-2. **Join with second player** - Open another browser/tab, enter different name
-3. **Play in real-time** - Moves should appear instantly on both screens
-4. **Check game history** - Previous games are saved and displayed
+### WebSocket Worker URL
+
+The WebSocket client is configured to use:
+- **Deployed worker**: `svelte-ttt-websocket.barrybecker4.workers.dev`
+
+To use your own deployed worker, update `src/lib/websocket/client.ts`:
+
+```typescript
+// Replace with your worker URL
+const host = 'svelte-ttt-websocket.YOUR_USERNAME.workers.dev';
+```
+
+### KV Storage
+
+Update KV namespace IDs in `wrangler.toml` to match your Cloudflare dashboard:
+
+```toml
+[env.preview]
+kv_namespaces = [
+    { binding = "TTT_GAME_KV", id = "YOUR_PREVIEW_KV_ID" }
+]
+
+[env.production]
+kv_namespaces = [
+    { binding = "TTT_GAME_KV", id = "YOUR_PRODUCTION_KV_ID" }
+]
+```
 
 ## Troubleshooting
 
-### WebSocket Connection Issues
+### Common Issues
 
-1. **Check worker deployment:**
-   ```bash
-   curl https://svelte-ttt-websocket.YOUR_USERNAME.workers.dev/health
-   ```
+**Game not updating in real-time:**
+- In local development: This is expected, updates happen every 2 seconds via polling
+- In production: Check WebSocket connection in browser dev tools
 
-2. **Check browser console** for WebSocket connection logs
+**WebSocket connection errors:**
+- Verify your WebSocket worker is deployed: `curl https://svelte-ttt-websocket.YOUR_USERNAME.workers.dev/health`
+- Check browser console for connection logs
 
-3. **Verify gameId** is being passed in WebSocket URL
+**Players can't join:**
+- Check that KV storage is working
+- Verify game creation API calls are succeeding
 
-### Local Development Issues
+### Development vs Production Behavior
 
-1. **Update worker URL** in `src/lib/websocket/client.ts` with your actual username
-2. **Check KV namespace IDs** in `wrangler.toml` match your Cloudflare dashboard
-3. **Verify Cloudflare authentication** with `wrangler whoami`
-
-### Common Fixes
-
-- **Game not updating**: Check WebSocket connection in browser dev tools
-- **Players can't join**: Verify KV storage is working
-- **Connection errors**: Confirm worker URL is correct in frontend code
+| Feature | Local Development | Production |
+|---------|------------------|------------|
+| Player joining | Detected via polling (2s delay) | Instant WebSocket notification |
+| Move updates | Detected via polling (2s delay) | Instant WebSocket notification |
+| Setup complexity | Simple (`npm run dev`) | Automatic via Cloudflare Pages |
+| WebSocket worker | Uses deployed version | Uses deployed version |
 
 ## Features
 
@@ -201,23 +196,25 @@ npm run check                  # Type checking
 - ✅ Game history and statistics
 - ✅ Global CDN distribution
 - ✅ Mobile-friendly interface
-- ✅ Graceful fallback to polling if WebSocket unavailable
+- ✅ Simple local development setup
+- ✅ Production-ready WebSocket notifications
 
 ## Technology Stack
 
 - **Frontend**: SvelteKit, TypeScript, Tailwind CSS
 - **Backend**: Cloudflare Workers, Durable Objects, KV Storage
 - **Real-time**: WebSocket Hibernation API
+- **Development**: Vite dev server + deployed WebSocket worker
 - **Deployment**: Cloudflare Pages + Workers
-- **Development**: Vite, Wrangler CLI
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test locally and in production
-5. Submit a pull request
+4. Test locally with `npm run dev`
+5. Test in production environment
+6. Submit a pull request
 
 ## License
 
