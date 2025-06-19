@@ -18,7 +18,7 @@
         if (isMyTurn) {
           return `Your turn (${currentPlayer})`;
         } else {
-          return `Waiting for ${getCurrentPlayerName()}'s move...`;
+          return `Waiting for ${getOtherPlayerName()}'s move...`;
         }
       case 'X_WIN':
         return `${getPlayerName('X')} wins!`;
@@ -41,6 +41,14 @@
 
   function getCurrentPlayerName(): string {
     return getPlayerName(currentPlayer);
+  }
+
+  function getOtherPlayerName(): string {
+    return getPlayerName(getOtherPlayer(currentPlayer));
+  }
+
+  function getOtherPlayer() {
+    return currentPlayer === 'X' ? 'O' : 'X';
   }
 
   function getPlayerName(symbol: 'X' | 'O' | null): string {
