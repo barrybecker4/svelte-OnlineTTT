@@ -39,6 +39,11 @@
       if (timeRemaining !== null) {
         timeRemaining--;
         
+        // Play warning sound when time gets urgent
+        if (timeRemaining <= 5) {
+          playWarningSound();
+        }
+
         if (timeRemaining <= 0) {
           console.log('⏰ Timer expired - calling timeout handler');
           stopTimer();
@@ -70,6 +75,36 @@
 
   export function forceStop() {
     stopTimer();
+  }
+
+  // Audio warning function
+  function playWarningSound() {
+    try {
+      // Create a simple beep using Web Audio API
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Configure the beep sound
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // Higher pitch for urgency
+      oscillator.type = 'sine';
+
+      // Configure volume (start loud, fade out)
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+      // Play the sound for 300ms
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+
+      console.log('🔊 Playing timer warning sound');
+    } catch (error) {
+      // Fallback: don't break the game if audio fails
+      console.log('🔇 Could not play warning sound:', error);
+    }
   }
 </script>
 
