@@ -6,6 +6,7 @@
   import GameControls from '$lib/components/game/GameControls.svelte';
   import PlayerHistory from '$lib/components/game/PlayerHistory.svelte';
   import GameTimer from '$lib/components/GameTimer.svelte';
+  import GamePoller from '$lib/components/GamePoller.svelte';
   import type { GameState, GameHistory } from '$lib/types/game.ts';
   import { getWebSocketClient } from '$lib/websocket/client.ts';
 
@@ -92,8 +93,7 @@
             console.log('✅ WebSocket connected successfully! Subscribing to updates...');
             wsClient.subscribeToGame(gameState.gameId, playerId);
 
-            // Start polling as backup for local development where notifications don't work
-            startDevPolling(gameState.gameId);
+            // Note: GamePoller will start automatically when gameState becomes non-null
           } else {
             console.warn('❌ WebSocket connection failed');
           }
@@ -108,43 +108,6 @@
     }
   }
 
-  // Development-only polling for local development
-  let devPollingInterval: number | null = null;
-
-  function startDevPolling(gameId: string) {
-    if (devPollingInterval) {
-      clearInterval(devPollingInterval);
-    }
-
-    console.log('🔄 Starting development polling for game state changes...');
-
-    devPollingInterval = setInterval(async () => {
-      try {
-        if (gameState) {
-          console.log('📡 Checking for game updates...');
-          await loadGameState(gameId);
-
-          // Stop polling if game is complete
-          if (gameState.status !== 'ACTIVE' && gameState.status !== 'PENDING') {
-            stopDevPolling();
-          }
-        } else {
-          stopDevPolling();
-        }
-      } catch (error) {
-        console.error('Dev polling error:', error);
-      }
-    }, 1000);
-  }
-
-  function stopDevPolling() {
-    if (devPollingInterval) {
-      clearInterval(devPollingInterval);
-      devPollingInterval = null;
-      console.log('🛑 Stopped development polling');
-    }
-  }
-
   onDestroy(() => {
     if (wsClient) {
       if (gameState) {
@@ -152,8 +115,7 @@
       }
       wsClient.disconnect();
     }
-    stopDevPolling();
-    // Note: GameTimer component will handle its own cleanup
+    // Note: GameTimer and GamePoller components will handle their own cleanup
   });
 
   async function loadGameState(gameId: string) {
@@ -388,6 +350,14 @@
       {isMyTurn}
       onTimeout={quitGame}
       timerDuration={10}
+    />
+
+    <!-- GamePoller Component - replaces polling variables and functions -->
+    <GamePoller
+      gameId={gameState.gameId}
+      gameStatus={gameState.status}
+      onGameUpdate={loadGameState}
+      enabled={true}
     />
 
     <GameStatus
