@@ -16,6 +16,7 @@
   let isMyTurn: boolean = false;
   let timeRemaining: number | null = null;
   let gameTimer: number | null = null;
+  let currentTurnStartTime: number | null = null;
   let wsClient: any = null;
 
   // Game lifecycle
@@ -180,6 +181,9 @@
         console.log('Set playerId to player2 ID:', playerId);
       }
 
+      const wasMyTurn = isMyTurn;
+      const previousBoard = gameState?.board;
+
       // Create the GameState object with correct player IDs from the server
       gameState = {
         gameId: data.gameId,
@@ -200,36 +204,77 @@
         lastMoveAt: data.lastMoveAt
       };
 
-      console.log('Game state loaded. My playerId:', playerId, 'My name:', playerName);
-      updateGameState(data);
+      console.log('Game state loaded:', gameState);
+
+      // Determine current player and if it's my turn
+      const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
+
+      // For PENDING games, only player 1 (X) should be "ready" but not actively playing
+      if (data.status === 'PENDING') {
+        isMyTurn = false; // No moves can be made in PENDING state
+        console.log('Game is PENDING - waiting for second player');
+      } else {
+        isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
+        console.log('Turn setup - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
+      }
+
+      // Only start/stop timer if turn state changed or board changed (indicating a new move)
+      const boardChanged = previousBoard !== data.board;
+      const turnChanged = wasMyTurn !== isMyTurn;
+
+      if (turnChanged || boardChanged) {
+        if (isMyTurn) {
+          startGameTimer();
+        } else {
+          stopGameTimer();
+        }
+      }
     } catch (error) {
-      console.error('Error loading game:', error);
+      console.error('Error loading game state:', error);
     }
   }
 
   async function makeMove(position: number) {
-    if (!gameState || !isMyTurn) return;
+    if (!gameState || !isMyTurn || gameState.status !== 'ACTIVE') {
+      console.log('Cannot make move - game state:', gameState?.status, 'isMyTurn:', isMyTurn);
+      return;
+    }
+
+    // Stop the current timer since we're making a move
+    stopGameTimer();
 
     try {
-      console.log('Making move with playerId:', playerId, 'position:', position);
+      console.log('Making move at position:', position);
+
       const response = await fetch(`/api/game/${gameState.gameId}/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId, cellPosition: position })
+        body: JSON.stringify({
+          gameId: gameState.gameId,
+          playerId,
+          cellPosition: position
+        })
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        alert(error.error || 'Invalid move');
-        return;
+        const errorText = await response.text();
+        throw new Error(`Failed to make move: ${errorText}`);
       }
 
-      // Note: We don't need to update the game state here anymore
-      // The WebSocket will send us the update automatically
-      console.log('Move submitted successfully, waiting for WebSocket update...');
+      const data = await response.json();
+      console.log('Move response:', data);
+
+      // Update local game state immediately for better UX
+      updateGameStateFromWebSocket(data);
+
     } catch (error) {
       console.error('Error making move:', error);
       alert('Failed to make move. Please try again.');
+
+      // Restart timer if move failed and it's still our turn
+      if (isMyTurn && gameState?.status === 'ACTIVE') {
+        startGameTimer();
+      }
     }
   }
 
@@ -289,6 +334,9 @@
 
     console.log('Updating game state from WebSocket:', data);
 
+    const wasMyTurn = isMyTurn;
+    const previousBoard = gameState.board;
+
     gameState.board = data.board;
     gameState.status = data.status;
     gameState.lastPlayer = data.lastPlayer;
@@ -306,10 +354,16 @@
       console.log('WebSocket turn update - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
     }
 
-    if (isMyTurn) {
-      startGameTimer();
-    } else {
-      stopGameTimer();
+    // Only start/stop timer if turn state changed or board changed (indicating a new move)
+    const boardChanged = previousBoard !== data.board;
+    const turnChanged = wasMyTurn !== isMyTurn;
+
+    if (turnChanged || boardChanged) {
+      if (isMyTurn) {
+        startGameTimer();
+      } else {
+        stopGameTimer();
+      }
     }
 
     // If game ended, load history
@@ -322,6 +376,8 @@
     if (!gameState) return;
 
     console.log('Handling player joined:', data);
+
+    const wasMyTurn = isMyTurn;
 
     // Update game state with new player info
     gameState.status = data.status;
@@ -339,14 +395,21 @@
 
     console.log('Player joined - Game status:', data.status, 'My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
 
-    if (isMyTurn) {
+    // Only start timer if turn state changed (new game starting)
+    if (wasMyTurn !== isMyTurn && isMyTurn) {
       startGameTimer();
     }
   }
-
   function startGameTimer() {
-    stopGameTimer();
+    // Only start a new timer if we don't already have one running
+    // or if this is genuinely a new turn
+    if (gameTimer !== null) {
+      return; // Timer already running, don't restart it
+    }
+
+    stopGameTimer(); // Clean up any existing timer (just in case)
     timeRemaining = 10; // 10 second timer
+    currentTurnStartTime = Date.now(); // Track when this turn started
 
     gameTimer = setInterval(() => {
       if (timeRemaining !== null) {
@@ -366,6 +429,7 @@
       gameTimer = null;
     }
     timeRemaining = null;
+    currentTurnStartTime = null;
   }
 
   // Utility functions
@@ -405,17 +469,6 @@
       {isMyTurn}
       {timeRemaining}
     />
-
-    <!-- ADD THIS REFRESH BUTTON SECTION -->
-    {#if gameState.status === 'PENDING'}
-      <div class="pending-refresh">
-        <p>Waiting for opponent to join...</p>
-        <button class="refresh-btn" on:click={() => location.reload()}>
-          🔄 Check for opponent
-        </button>
-        <p class="help-text">Click refresh after your friend joins!</p>
-      </div>
-    {/if}
 
     <GameBoard
       board={gameState.board}
