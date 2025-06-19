@@ -35,16 +35,6 @@
     }
   });
 
-  onDestroy(() => {
-    if (wsClient) {
-      if (gameState) {
-        wsClient.unsubscribeFromGame(gameState.gameId);
-      }
-      wsClient.disconnect();
-    }
-    stopGameTimer();
-  });
-
   function setupWebSocketCallbacks() {
     wsClient.onGameUpdate((data: any) => {
       console.log('Received game update:', data);
@@ -73,48 +63,106 @@
     }
   }
 
-  // Modify your createNewGame function to include this check:
   async function createNewGame() {
     try {
       console.log('Creating game with playerName:', playerName);
 
-      // Check if we're in local development
-      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      console.log('Environment: ', isLocalDev ? 'Local Development' : 'Production');
-
-      // Check if WebSocket service is actually available
-      const wsAvailable = !isLocalDev && await checkWebSocketAvailability();
+      // Check if WebSocket service is available (remove the local dev check)
+      const wsAvailable = await checkWebSocketAvailability();
       console.log('WebSocket service available:', wsAvailable);
 
-      let useWebSocket = wsAvailable && wsClient;
+      // Create the game via HTTP API first
+      const response = await fetch('/api/game/new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerName })
+      });
 
-      if (useWebSocket) {
-        console.log('Checking WebSocket connection...');
-        try {
-          if (!wsClient.isConnected()) {
-            console.log('WebSocket not connected, attempting to connect...');
-            await wsClient.connect();
-            // Give it a moment to connect
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-
-          if (!wsClient.isConnected()) {
-            console.warn('WebSocket connection failed, continuing without WebSocket');
-            useWebSocket = false;
-          }
-        } catch (wsError) {
-          console.warn('WebSocket error, continuing without WebSocket:', wsError);
-          useWebSocket = false;
-        }
-      } else {
-        console.log('Skipping WebSocket (not available or local development)');
+      if (!response.ok) {
+        throw new Error(`Failed to create game: ${response.statusText}`);
       }
 
-      // Rest of your function remains the same...
+      const data = await response.json();
+      console.log('Game creation response:', data);
+
+      // Set our player ID
+      playerId = data.playerId;
+      console.log('Set playerId to:', playerId);
+
+      // Load the full game state
+      await loadGameState(data.gameId);
+
+      // Connect to WebSocket with the specific gameId if available
+      if (wsAvailable && wsClient && gameState) {
+        console.log('Connecting to WebSocket for game:', gameState.gameId);
+        try {
+          // Connect with the specific game ID
+          await wsClient.connect(gameState.gameId);
+
+          // Give it a moment to connect
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          if (wsClient.isConnected()) {
+            console.log('Subscribing to WebSocket updates...');
+            wsClient.subscribeToGame(gameState.gameId, playerId);
+          } else {
+            console.warn('WebSocket connection failed, using polling instead');
+            startPolling(gameState.gameId);
+          }
+        } catch (wsError) {
+          console.warn('WebSocket error, using polling instead:', wsError);
+          startPolling(gameState.gameId);
+        }
+      } else {
+        console.log('WebSocket not available, using polling');
+        if (gameState) {
+          startPolling(gameState.gameId);
+        }
+      }
+
     } catch (error) {
-      // Error handling...
+      console.error('Error creating game:', error);
+      alert('Failed to create game. Please try again.');
     }
   }
+
+  // Add this polling function for local development
+  let pollingInterval: number | null = null;
+
+  function startPolling(gameId: string) {
+    // Clear any existing polling
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
+
+    // Poll every 2 seconds
+    pollingInterval = setInterval(async () => {
+      try {
+        await loadGameState(gameId);
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }, 2000);
+  }
+
+  function stopPolling() {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      pollingInterval = null;
+    }
+  }
+
+  // Update the onDestroy function to include polling cleanup
+  onDestroy(() => {
+    if (wsClient) {
+      if (gameState) {
+        wsClient.unsubscribeFromGame(gameState.gameId);
+      }
+      wsClient.disconnect();
+    }
+    stopPolling(); // Add this line
+    stopGameTimer();
+  });
 
   async function loadGameState(gameId: string) {
     try {

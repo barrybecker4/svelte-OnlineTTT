@@ -15,9 +15,10 @@ export class GameWebSocketClient {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000; // Start with 1 second
+  private reconnectDelay = 1000;
   private pingInterval: number | null = null;
   private isConnecting = false;
+  private currentGameId: string | null = null;
 
   private callbacks: {
     gameUpdate?: GameUpdateCallback;
@@ -27,7 +28,6 @@ export class GameWebSocketClient {
 
   constructor(private baseUrl: string = '') {
     if (typeof window !== 'undefined') {
-      // Auto-reconnect on page visibility change
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && !this.isConnected()) {
           this.connect();
@@ -36,18 +36,23 @@ export class GameWebSocketClient {
     }
   }
 
-  async connect(): Promise<void> {
+  async connect(gameId?: string): Promise<void> {
     if (this.isConnecting || this.isConnected()) {
       return;
+    }
+
+    // Store the gameId for reconnections
+    if (gameId) {
+      this.currentGameId = gameId;
     }
 
     this.isConnecting = true;
 
     try {
-      const wsUrl = this.getWebSocketUrl();
+      const wsUrl = this.getWebSocketUrl(this.currentGameId);
       console.log('Connecting to WebSocket:', wsUrl);
 
-      // First check if the WebSocket service is available
+      // Check if WebSocket service is available
       try {
         const checkResponse = await fetch('/api/websocket', { method: 'HEAD' });
         if (checkResponse.status === 503) {
@@ -64,7 +69,7 @@ export class GameWebSocketClient {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected for game:', this.currentGameId);
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         this.reconnectDelay = 1000;
@@ -139,39 +144,30 @@ export class GameWebSocketClient {
       return false;
     }
 
-    subscribeToGame(gameId: string, playerId: string): void {
-      if (!this.isConnected()) {
-        console.warn('WebSocket not connected, attempting to connect first...');
-        this.connect().then(() => {
-          if (this.isConnected()) {
-            this.send({
-              type: 'subscribe',
-              gameId,
-              playerId
-            });
-          }
+  subscribeToGame(gameId: string, playerId: string): void {
+    // First connect with the specific gameId
+    this.connect(gameId).then(() => {
+      if (this.isConnected()) {
+        this.send({
+          type: 'subscribe',
+          gameId,
+          playerId
         });
-        return;
       }
+    });
+  }
 
-      console.log(`Subscribing to game ${gameId} as player ${playerId}`);
-      this.send({
-        type: 'subscribe',
-        gameId,
-        playerId
-      });
+
+  unsubscribeFromGame(gameId: string): void {
+    if (!this.isConnected()) {
+      return;
     }
 
-    unsubscribeFromGame(gameId: string): void {
-      if (!this.isConnected()) {
-        return;
-      }
-
-      this.send({
-        type: 'unsubscribe',
-        gameId
-      });
-    }
+    this.send({
+      type: 'unsubscribe',
+      gameId
+    });
+  }
 
   onGameUpdate(callback: GameUpdateCallback): void {
     this.callbacks.gameUpdate = callback;
@@ -185,14 +181,35 @@ export class GameWebSocketClient {
     this.callbacks.error = callback;
   }
 
-  private getWebSocketUrl(): string {
+  private getWebSocketUrl(gameId?: string): string {
     if (typeof window === 'undefined') {
       return '';
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = this.baseUrl || window.location.host;
-    return `${protocol}//${host}/api/websocket`;
+
+    // Check if we're in local development
+    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    let host: string;
+    if (isLocalDev) {
+      // For local development, connect directly to your deployed worker
+      host = 'svelte-ttt-websocket.barrybecker4.workers.dev';
+    } else {
+      // For production, you'll need to set up custom domain routing
+      // For now, use the worker URL directly
+      host = 'svelte-ttt-websocket.barrybecker4.workers.dev';
+    }
+
+    // Build the WebSocket URL
+    let wsUrl = `${protocol}//${host}/websocket`;
+
+    // Add gameId as query parameter if provided
+    if (gameId) {
+      wsUrl += `?gameId=${encodeURIComponent(gameId)}`;
+    }
+
+    return wsUrl;
   }
 
   private send(data: any): void {
@@ -258,7 +275,6 @@ export class GameWebSocketClient {
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.log('Max reconnect attempts reached, giving up on WebSocket');
-      // Don't show error to user, just log it
       return;
     }
 
@@ -268,7 +284,7 @@ export class GameWebSocketClient {
     console.log(`Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
 
     setTimeout(() => {
-      this.connect();
+      this.connect(); // Will use stored currentGameId
     }, delay);
   }
 }

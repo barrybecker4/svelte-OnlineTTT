@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "dev:wrangler": "wrangler pages dev --compatibility-date=2024-05-15 --port 8788 --proxy 5173",
     "build": "vite build",
     "preview": "wrangler pages dev dist",
     "prepare": "svelte-kit sync || echo ''",
@@ -17,7 +16,11 @@
     "test": "npm run test:integration && npm run test:unit",
     "test-e2e": "npm run test:unit -- --run && npm run test:e2e",
     "test:e2e": "playwright test",
-    "deploy": "npm run build && wrangler pages deploy dist"
+    "deploy": "npm run build && wrangler pages deploy dist",
+    "dev:websocket": "cd websocket-worker && wrangler dev --port 8787",
+    "dev:full": "concurrently \"npm run dev:websocket\" \"npm run dev:wrangler\"",
+    "dev:wrangler": "wrangler pages dev --port 8788 --proxy 5173 --service WEBSOCKET_SERVICE=svelte-ttt-websocket@localhost:8787",
+    "deploy:websocket": "cd websocket-worker && wrangler deploy"
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.5",
@@ -30,6 +33,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/svelte": "^5.2.4",
     "@types/node": "^24.0.1",
+    "concurrently": "^9.1.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-svelte": "^3.0.0",
