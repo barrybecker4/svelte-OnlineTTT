@@ -495,31 +495,12 @@
     text-align: center;
   }
 
-  header h1 {
-    color: #005588;
-    font-size: 2.5rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .player-info {
-    color: #666;
-    margin-bottom: 2rem;
-  }
-
-  .player-info strong {
-    color: #005588;
-  }
-
   .welcome {
     margin: 2rem 0;
     padding: 2rem;
     background: #f8f9fa;
     border-radius: 8px;
     color: #495057;
-  }
-
-  .welcome p {
-    margin: 0.5rem 0;
   }
 
   @media (max-width: 768px) {
@@ -530,36 +511,5 @@
     header h1 {
       font-size: 2rem;
     }
-  }
-
-  .pending-refresh {
-    text-align: center;
-    padding: 20px;
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    margin: 16px 0;
-  }
-
-  .refresh-btn {
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 10px 20px;
-    cursor: pointer;
-    font-size: 1em;
-    margin: 8px 0;
-    transition: background-color 0.2s;
-  }
-
-  .refresh-btn:hover {
-    background: #0056b3;
-  }
-
-  .help-text {
-    font-size: 0.9em;
-    color: #6c757d;
-    margin: 8px 0 0 0;
   }
 </style>
