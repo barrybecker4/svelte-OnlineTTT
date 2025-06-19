@@ -5,8 +5,8 @@
   import GameStatus from '$lib/components/game/GameStatus.svelte';
   import GameControls from '$lib/components/game/GameControls.svelte';
   import PlayerHistory from '$lib/components/game/PlayerHistory.svelte';
-  import GameTimer from '$lib/components/GameTimer.svelte';
-  import GamePoller from '$lib/components/GamePoller.svelte';
+  import GameTimer from '$lib/components/game/GameTimer.svelte';
+  import GamePoller from '$lib/components/game/GamePoller.svelte';
   import type { GameState, GameHistory } from '$lib/types/game.ts';
   import { getWebSocketClient } from '$lib/websocket/client.ts';
 
