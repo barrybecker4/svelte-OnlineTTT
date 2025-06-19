@@ -3,6 +3,9 @@ name = "svelte-online-ttt"
 compatibility_date = "2024-05-15"
 pages_build_output_dir = "dist"
 
+# Add nodejs compatibility for SvelteKit
+compatibility_flags = ["nodejs_compat"]
+
 [env.preview]
 kv_namespaces = [
     { binding = "TTT_GAME_KV", id = "2ed8441b10cd4ca59cfeaa3081b4b7d1" }
@@ -12,12 +15,3 @@ kv_namespaces = [
 kv_namespaces = [
     { binding = "TTT_GAME_KV", id = "da8a29a1985a49de9be56c5d41188229" }
 ]
-
-# For local development with wrangler dev
-[[services]]
-binding = "WEBSOCKET_SERVICE"
-service = "svelte-ttt-websocket"
-
-# For production deployment
-[env.production.services]
-WEBSOCKET_SERVICE = { service = "svelte-ttt-websocket" }
