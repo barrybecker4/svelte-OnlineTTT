@@ -5,6 +5,7 @@
   import GameStatus from '$lib/components/game/GameStatus.svelte';
   import GameControls from '$lib/components/game/GameControls.svelte';
   import PlayerHistory from '$lib/components/game/PlayerHistory.svelte';
+  import GameTimer from '$lib/components/GameTimer.svelte';
   import type { GameState, GameHistory } from '$lib/types/game.ts';
   import { getWebSocketClient } from '$lib/websocket/client.ts';
 
@@ -14,9 +15,6 @@
   let playerName: string = '';
   let playerId: string = '';
   let isMyTurn: boolean = false;
-  let timeRemaining: number | null = null;
-  let gameTimer: number | null = null;
-  let currentTurnStartTime: number | null = null;
   let wsClient: any = null;
 
   // Game lifecycle
@@ -77,7 +75,7 @@
       // Load the full game state
       console.log('Loading game state for gameId:', data.gameId);
       await loadGameState(data.gameId);
-      
+
       console.log('Final gameState after loading:', gameState);
 
       // Connect to WebSocket with the specific gameId
@@ -93,7 +91,7 @@
           if (wsClient.isConnected()) {
             console.log('✅ WebSocket connected successfully! Subscribing to updates...');
             wsClient.subscribeToGame(gameState.gameId, playerId);
-            
+
             // Start polling as backup for local development where notifications don't work
             startDevPolling(gameState.gameId);
           } else {
@@ -155,7 +153,7 @@
       wsClient.disconnect();
     }
     stopDevPolling();
-    stopGameTimer();
+    // Note: GameTimer component will handle its own cleanup
   });
 
   async function loadGameState(gameId: string) {
@@ -211,17 +209,8 @@
         console.log('Turn setup - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
       }
 
-      // Only start/stop timer if turn state changed or board changed (indicating a new move)
-      const boardChanged = previousBoard !== data.board;
-      const turnChanged = wasMyTurn !== isMyTurn;
+      // Note: Timer start/stop is now handled by GameTimer component via isMyTurn prop
 
-      if (turnChanged || boardChanged) {
-        if (isMyTurn) {
-          startGameTimer();
-        } else {
-          stopGameTimer();
-        }
-      }
     } catch (error) {
       console.error('Error loading game state:', error);
     }
@@ -239,12 +228,9 @@
       return;
     }
 
-    // Stop the current timer since we're making a move
-    stopGameTimer();
-
     // Prevent duplicate moves by temporarily disabling
     const wasMyTurn = isMyTurn;
-    isMyTurn = false;
+    isMyTurn = false; // This will stop the GameTimer via reactive logic
 
     try {
       console.log('Making move at position:', position);
@@ -274,12 +260,7 @@
       console.error('Error making move:', error);
 
       // Restore turn state if move failed
-      isMyTurn = wasMyTurn;
-
-      // Restart timer if move failed and it's still our turn
-      if (isMyTurn && gameState?.status === 'ACTIVE') {
-        startGameTimer();
-      }
+      isMyTurn = wasMyTurn; // This will restart the GameTimer if needed
     }
   }
 
@@ -295,7 +276,7 @@
 
       if (response.ok) {
         // WebSocket will notify us of the game state change
-        stopGameTimer();
+        console.log('Game quit successfully');
       }
     } catch (error) {
       console.error('Error quitting game:', error);
@@ -312,9 +293,6 @@
     if (!gameState || !playerId) return;
 
     console.log('Updating game state from WebSocket:', data);
-
-    const wasMyTurn = isMyTurn;
-    const previousBoard = gameState.board;
 
     gameState.board = data.board;
     gameState.status = data.status;
@@ -333,17 +311,7 @@
       console.log('WebSocket turn update - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
     }
 
-    // Only start/stop timer if turn state changed or board changed (indicating a new move)
-    const boardChanged = previousBoard !== data.board;
-    const turnChanged = wasMyTurn !== isMyTurn;
-
-    if (turnChanged || boardChanged) {
-      if (isMyTurn) {
-        startGameTimer();
-      } else {
-        stopGameTimer();
-      }
-    }
+    // Note: Timer management is now handled by GameTimer component
 
     // If game ended, load history
     if (data.status !== 'ACTIVE' && data.status !== 'PENDING') {
@@ -355,8 +323,6 @@
     if (!gameState) return;
 
     console.log('Handling player joined:', data);
-
-    const wasMyTurn = isMyTurn;
 
     // Update game state with new player info
     gameState.status = data.status;
@@ -374,42 +340,7 @@
 
     console.log('Player joined - Game status:', data.status, 'My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
 
-    // Only start timer if turn state changed (new game starting)
-    if (wasMyTurn !== isMyTurn && isMyTurn) {
-      startGameTimer();
-    }
-  }
-
-  // Timer functions
-  function startGameTimer() {
-    // Only start a new timer if we don't already have one running
-    if (gameTimer !== null) {
-      return; // Timer already running, don't restart it
-    }
-
-    stopGameTimer(); // Clean up any existing timer (just in case)
-    timeRemaining = 10; // 10 second timer
-    currentTurnStartTime = Date.now(); // Track when this turn started
-
-    gameTimer = setInterval(() => {
-      if (timeRemaining !== null) {
-        timeRemaining--;
-        if (timeRemaining <= 0) {
-          stopGameTimer();
-          // Auto-quit on timeout
-          quitGame();
-        }
-      }
-    }, 1000);
-  }
-
-  function stopGameTimer() {
-    if (gameTimer) {
-      clearInterval(gameTimer);
-      gameTimer = null;
-    }
-    timeRemaining = null;
-    currentTurnStartTime = null;
+    // Note: Timer start is now handled by GameTimer component via isMyTurn prop changes
   }
 
   // Utility functions
@@ -452,13 +383,20 @@
   </div>
 {:else}
   <div class="space-y-4">
+    <!-- GameTimer Component - replaces timer variables and functions -->
+    <GameTimer
+      {isMyTurn}
+      onTimeout={quitGame}
+      timerDuration={10}
+    />
+
     <GameStatus
       status={gameState.status}
       currentPlayer={getCurrentPlayerSymbol()}
       player1Name={gameState.player1.name}
       player2Name={gameState.player2?.name || null}
       {isMyTurn}
-      {timeRemaining}
+      timeRemaining={null}
     />
 
     <GameBoard

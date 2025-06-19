@@ -78,6 +78,9 @@ npm run dev
 2. **Join with second player** - Open another browser tab/window, enter different name, click "Play"
 3. **Play in real-time** - Moves appear within 2 seconds in local development, instantly in production
 
+To run the unit tests, use `npm run test:unit`. 
+To run e2e tests, use `npm run test:e2e`.
+
 ### 6. Production Deployment
 
 Deploy your main SvelteKit app to Cloudflare Pages:
