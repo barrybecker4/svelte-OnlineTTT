@@ -39,13 +39,11 @@
   function setupWebSocketCallbacks() {
     wsClient.onGameUpdate((data: any) => {
       console.log('📩 Received game update:', data);
-      wsWorking = true;
-      updateGameStateFromWebSocket(data);
+      updateGameStateFromWebSocket(data, true);
     });
 
     wsClient.onPlayerJoined((data: any) => {
       console.log('👋 Player joined notification received:', data);
-      wsWorking = true;
       handlePlayerJoined(data);
     });
   }
@@ -221,7 +219,7 @@
       console.log('Move response:', data);
 
       // Update local game state immediately for better UX
-      updateGameStateFromWebSocket(data);
+      updateGameStateFromWebSocket(data, false);
 
     } catch (error) {
       console.error('Error making move:', error);
@@ -256,7 +254,7 @@
   }
 
   // WebSocket handlers
-  function updateGameStateFromWebSocket(data: any) {
+  function updateGameStateFromWebSocket(data: any, fromWebSocket: boolean = true) {
     if (!gameState || !playerId) return;
 
     console.log('Updating game state from WebSocket:', data);
@@ -265,6 +263,11 @@
     gameState.status = data.status;
     gameState.lastPlayer = data.lastPlayer;
     gameState.lastMoveAt = data.lastMoveAt;
+
+    if (fromWebSocket) {
+      wsActuallyWorking = true;
+      console.log('📩 Real WebSocket notification - disabling polling');
+    }
 
     // Determine if it's my turn based on actual player ID comparison
     const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
