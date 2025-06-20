@@ -12,6 +12,19 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		return json({ error: 'Player name required' }, { status: 400 });
 	}
 
+  console.log('Platform env keys:', Object.keys(platform?.env || {}));
+  console.log('WEBSOCKET_HIBERNATION_SERVER exists:', !!platform?.env.WEBSOCKET_HIBERNATION_SERVER);
+  console.log('Platform env keys:', Object.keys(platform?.env || {}));
+  console.log('Full platform object keys:', Object.keys(platform || {}));
+  console.log('WEBSOCKET_HIBERNATION_SERVER:', platform?.env.WEBSOCKET_HIBERNATION_SERVER);
+  console.log('Any WEBSOCKET services:', Object.keys(platform?.env || {}).filter(key => key.includes('WEBSOCKET')));
+
+  if (platform?.env.WEBSOCKET_HIBERNATION_SERVER) {
+    console.log('WebSocket service IS available');
+  } else {
+    console.log('WebSocket service NOT available');
+  }
+
 	const kv = new KVStorage(platform!);
 	const gameStorage = new GameStorage(kv);
 
