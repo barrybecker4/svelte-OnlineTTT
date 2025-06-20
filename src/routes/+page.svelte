@@ -18,6 +18,7 @@
   let playerId: string = '';
   let isMyTurn: boolean = false;
   let wsClient: any = null;
+  let wsConnected: boolean = false;
 
   // Game lifecycle
   onMount(() => {
@@ -49,6 +50,17 @@
     wsClient.onError((error: string) => {
       console.error('❌ WebSocket error:', error);
       alert(`Connection error: ${error}`);
+    });
+
+    // Add connection status tracking
+    wsClient.onConnected(() => {
+      wsConnected = true;
+      console.log('🔗 WebSocket connected - disabling polling');
+    });
+
+    wsClient.onDisconnected(() => {
+      wsConnected = false;
+      console.log('🔗 WebSocket disconnected - enabling polling fallback');
     });
   }
 
@@ -294,8 +306,6 @@
       gameAudio.playTieSound();
     } else if (status.endsWith('_WIN')) {
       playWonOrLostSound(status, mySymbol);
-    } else if (status.endsWith('_BY_RESIGN') || status.endsWith('_BY_TIMEOUT')) {
-      playWonOrLostSound(status, mySymbol);
     }
   }
 
@@ -379,12 +389,12 @@
       timerDuration={10}
     />
 
-    <!-- GamePoller Component - replaces polling variables and functions -->
+    <!-- GamePoller Component - only enabled when WebSocket is not connected -->
     <GamePoller
       gameId={gameState.gameId}
       gameStatus={gameState.status}
       onGameUpdate={loadGameState}
-      enabled={true}
+      enabled={!wsConnected}
     />
 
     <GameStatus
