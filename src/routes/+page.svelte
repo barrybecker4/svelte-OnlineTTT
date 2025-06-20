@@ -9,6 +9,7 @@
   import GamePoller from '$lib/components/game/GamePoller.svelte';
   import type { GameState, GameHistory } from '$lib/types/game.ts';
   import { getWebSocketClient } from '$lib/websocket/client.ts';
+  import { gameAudio } from '$lib/audio/Audio';
 
   // Game state
   let gameState: GameState | null = null;
@@ -173,6 +174,11 @@
 
       // Note: Timer start/stop is now handled by GameTimer component via isMyTurn prop
 
+      const gameOver = data.status !== 'ACTIVE' && data.status !== 'PENDING';
+      if (gameOver) {
+        const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
+        playGameOverSound(data.status, mySymbol);
+      }
     } catch (error) {
       console.error('Error loading game state:', error);
     }
@@ -196,6 +202,7 @@
 
     try {
       console.log('Making move at position:', position);
+      gameAudio.playMoveSound();
 
       const response = await fetch(`/api/game/${gameState.gameId}/move`, {
         method: 'POST',
@@ -275,9 +282,29 @@
 
     // Note: Timer management is now handled by GameTimer component
 
-    // If game ended, load history
-    if (data.status !== 'ACTIVE' && data.status !== 'PENDING') {
+    const gameOver = data.status !== 'ACTIVE' && data.status !== 'PENDING';
+    if (gameOver) {
+      playGameOverSound(data.status, mySymbol);
       loadGameHistory();
+    }
+  }
+
+  function playGameOverSound(status: string, mySymbol: 'X' | 'O') {
+    if (status === 'TIE') {
+      gameAudio.playTieSound();
+    } else if (status.endsWith('_WIN')) {
+      playWonOrLostSound(status, mySymbol);
+    } else if (status.endsWith('_BY_RESIGN') || status.endsWith('_BY_TIMEOUT')) {
+      playWonOrLostSound(status, mySymbol);
+    }
+  }
+
+  function playWonOrLostSound(status: string, mySymbol) {
+    const winnerSymbol = status.startsWith('X') ? 'X' : 'O';
+    if (winnerSymbol === mySymbol) {
+      gameAudio.playGameWon();
+    } else {
+      gameAudio.playGameLost();
     }
   }
 
