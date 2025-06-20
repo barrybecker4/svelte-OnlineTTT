@@ -1,6 +1,3 @@
-// Updated src/routes/api/game/new/+server.ts
-// This version gracefully handles missing WebSocket Durable Objects in local development
-
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
 import { KVStorage } from '$lib/storage/kv.ts';

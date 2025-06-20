@@ -10,7 +10,7 @@ compatibility_flags = ["nodejs_compat"]
 [[services]]
 binding = "WEBSOCKET_HIBERNATION_SERVER"
 service = "svelte-ttt-websocket"
-environment = "production"
+
 
 [env.preview]
 kv_namespaces = [
