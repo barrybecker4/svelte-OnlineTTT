@@ -18,7 +18,7 @@
   let playerId: string = '';
   let isMyTurn: boolean = false;
   let wsClient: any = null;
-  let wsConnected: boolean = false;
+  let wsWorking: boolean = false;
 
   // Game lifecycle
   onMount(() => {
@@ -39,28 +39,14 @@
   function setupWebSocketCallbacks() {
     wsClient.onGameUpdate((data: any) => {
       console.log('📩 Received game update:', data);
+      wsWorking = true;
       updateGameStateFromWebSocket(data);
     });
 
     wsClient.onPlayerJoined((data: any) => {
       console.log('👋 Player joined notification received:', data);
+      wsWorking = true;
       handlePlayerJoined(data);
-    });
-
-    wsClient.onError((error: string) => {
-      console.error('❌ WebSocket error:', error);
-      alert(`Connection error: ${error}`);
-    });
-
-    // Add connection status tracking
-    wsClient.onConnected(() => {
-      wsConnected = true;
-      console.log('🔗 WebSocket connected - disabling polling');
-    });
-
-    wsClient.onDisconnected(() => {
-      wsConnected = false;
-      console.log('🔗 WebSocket disconnected - enabling polling fallback');
     });
   }
 
@@ -394,7 +380,7 @@
       gameId={gameState.gameId}
       gameStatus={gameState.status}
       onGameUpdate={loadGameState}
-      enabled={!wsConnected}
+      enabled={!wsWorking}
     />
 
     <GameStatus

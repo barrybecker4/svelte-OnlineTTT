@@ -14,7 +14,12 @@
 
   // Reactive: start/stop polling based on props
   $: {
-    if (enabled && gameId) {
+    console.log('🔍 GamePoller reactive - enabled:', enabled, 'gameId:', gameId, 'status:', gameStatus, 'isPolling:', isPolling);
+
+    if (!enabled && isPolling) {
+      console.log('🛑 GamePoller: Stopping polling - disabled by parent');
+      stopPolling();
+    } else if (enabled && gameId) {
       const shouldPoll = shouldPollStatus(gameStatus);
 
       if (shouldPoll && !isPolling) {

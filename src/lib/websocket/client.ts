@@ -10,8 +10,6 @@ export interface GameMessage {
 export type GameUpdateCallback = (data: any) => void;
 export type PlayerJoinedCallback = (data: any) => void;
 export type ErrorCallback = (error: string) => void;
-export type ConnectedCallback = () => void;
-export type DisconnectedCallback = () => void;
 
 export class GameWebSocketClient {
   private ws: WebSocket | null = null;
@@ -26,8 +24,6 @@ export class GameWebSocketClient {
     gameUpdate?: GameUpdateCallback;
     playerJoined?: PlayerJoinedCallback;
     error?: ErrorCallback;
-    connected?: ConnectedCallback;
-    disconnected?: DisconnectedCallback;
   } = {};
 
   constructor(private baseUrl: string = '') {
@@ -38,14 +34,6 @@ export class GameWebSocketClient {
         }
       });
     }
-  }
-
-  onConnected(callback: ConnectedCallback): void {
-    this.callbacks.connected = callback;
-  }
-
-  onDisconnected(callback: DisconnectedCallback): void {
-    this.callbacks.disconnected = callback;
   }
 
   async connect(gameId?: string): Promise<void> {
@@ -73,10 +61,6 @@ export class GameWebSocketClient {
         this.reconnectAttempts = 0;
         this.reconnectDelay = 1000;
         this.startPing();
-
-        if (this.callbacks.connected) {
-          this.callbacks.connected();
-        }
       };
 
       this.ws.onmessage = (event) => {
@@ -92,11 +76,6 @@ export class GameWebSocketClient {
         console.log('WebSocket closed:', event.code, event.reason);
         this.isConnecting = false;
         this.stopPing();
-
-        // Call the disconnected callback
-        if (this.callbacks.disconnected) {
-          this.callbacks.disconnected();
-        }
 
         // Only try to reconnect if it's not a service unavailable error
         if (event.code !== 1011 && event.code !== 1012) {
