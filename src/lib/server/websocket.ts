@@ -248,7 +248,7 @@ export async function notifyGameUpdate(
   gameState: GameState,
   durableObject: DurableObjectNamespace
 ): Promise<void> {
-  const id = durableObject.idFromName('websocket-server');
+  const id = durableObject.idFromName(`game-${gameId}`);
   const stub = durableObject.get(id);
 
   // Serialize the game state to avoid DataCloneError
@@ -281,7 +281,7 @@ export async function notifyPlayerJoined(
   gameState: GameState,
   durableObject: DurableObjectNamespace
 ): Promise<void> {
-  const id = durableObject.idFromName('websocket-server');
+  const id = durableObject.idFromName(`game-${gameId}`);
   const stub = durableObject.get(id);
 
   // Serialize the game state to avoid DataCloneError
