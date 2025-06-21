@@ -347,9 +347,9 @@
     // Update game state with new player info
     gameState.status = data.status;
     gameState.player2 = data.player2 ? {
-      id: data.player2Id,
+      id: data.player2.id,
       symbol: 'O',
-      name: data.player2
+      name: data.player2.name
     } : undefined;
     gameState.lastPlayer = data.lastPlayer;
     gameState.lastMoveAt = data.lastMoveAt;
