@@ -4,6 +4,7 @@ import { KVStorage } from '$lib/storage/kv.ts';
 import { GameStorage } from '$lib/storage/games.ts';
 import { HistoryStorage } from '$lib/storage/history.ts';
 import { terminateGame, getPlayerSymbol } from '$lib/game/state.ts';
+import { notifyGameUpdate } from '$lib/server/websocket.ts';
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
   try {
@@ -34,9 +35,27 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
       await gameStorage.saveGame(updatedGame);
       await historyStorage.addGameToHistory(updatedGame);
 
+      // Send WebSocket notification to inform other player about the quit/timeout
+      if (platform?.env.WEBSOCKET_HIBERNATION_SERVER) {
+        try {
+          console.log(`🚨 Sending WebSocket notification for player quit/timeout - game: ${gameId}, player: ${playerSymbol}, reason: ${reason}`);
+          await notifyGameUpdate(updatedGame.gameId, updatedGame, platform.env.WEBSOCKET_HIBERNATION_SERVER);
+          console.log('✅ WebSocket notification sent successfully for quit/timeout');
+        } catch (error) {
+          console.error('❌ Failed to send WebSocket notification for quit/timeout:', error);
+          // Continue anyway - the game state is still updated
+        }
+      } else {
+        console.log('🏠 LOCAL DEV: Quit/timeout notification skipped (WebSocket notifications disabled)');
+      }
+
       return json({
         gameId: updatedGame.gameId,
         status: updatedGame.status,
+        board: updatedGame.board,
+        lastPlayer: updatedGame.lastPlayer,
+        lastMoveAt: updatedGame.lastMoveAt,
+        winner: updatedGame.winner || null,
         message: `Player ${playerSymbol} ${reason.toLowerCase()}`
       });
     }
