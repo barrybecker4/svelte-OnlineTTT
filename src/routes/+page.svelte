@@ -39,11 +39,13 @@
   function setupWebSocketCallbacks() {
     wsClient.onGameUpdate((data: any) => {
       console.log('📩 Received game update:', data);
+      wsWorking = true;
       updateGameStateFromWebSocket(data, true);
     });
 
     wsClient.onPlayerJoined((data: any) => {
       console.log('👋 Player joined notification received:', data);
+      wsWorking = true;
       handlePlayerJoined(data);
     });
   }
