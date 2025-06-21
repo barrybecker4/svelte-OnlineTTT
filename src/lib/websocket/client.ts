@@ -19,6 +19,7 @@ export class GameWebSocketClient {
   private pingInterval: number | null = null;
   private isConnecting = false;
   private currentGameId: string | null = null;
+  private connectionPromise: Promise<void> | null = null;
 
   private callbacks: {
     gameUpdate?: GameUpdateCallback;
@@ -29,16 +30,28 @@ export class GameWebSocketClient {
   constructor(private baseUrl: string = '') {
     if (typeof window !== 'undefined') {
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && !this.isConnected()) {
-          this.connect();
+        if (document.visibilityState === 'visible' && !this.isConnected() && this.currentGameId) {
+          this.connect(this.currentGameId);
         }
       });
     }
   }
 
   async connect(gameId?: string): Promise<void> {
-    if (this.isConnecting || this.isConnected()) {
+    // Don't allow connections without a gameId
+    if (!gameId && !this.currentGameId) {
+      console.warn('Cannot connect to WebSocket without a gameId');
       return;
+    }
+
+    // If already connecting or connected to the same gameId, return existing promise or resolve immediately
+    if (gameId && this.currentGameId === gameId) {
+      if (this.isConnected()) {
+        return Promise.resolve();
+      }
+      if (this.connectionPromise) {
+        return this.connectionPromise;
+      }
     }
 
     // Store the gameId for reconnections
@@ -46,58 +59,97 @@ export class GameWebSocketClient {
       this.currentGameId = gameId;
     }
 
+    // Don't start a new connection if one is already in progress for the same game
+    if (this.isConnecting) {
+      return this.connectionPromise || Promise.resolve();
+    }
+
     this.isConnecting = true;
 
-    try {
-      const wsUrl = this.getWebSocketUrl(this.currentGameId);
-      console.log('Connecting to WebSocket:', wsUrl);
+    this.connectionPromise = new Promise<void>((resolve, reject) => {
+      try {
+        const wsUrl = this.getWebSocketUrl(this.currentGameId!);
+        console.log('Connecting to WebSocket:', wsUrl);
 
-      // Connect directly - no availability checks needed
-      this.ws = new WebSocket(wsUrl);
-
-      this.ws.onopen = () => {
-        console.log('WebSocket connected for game:', this.currentGameId);
-        this.isConnecting = false;
-        this.reconnectAttempts = 0;
-        this.reconnectDelay = 1000;
-        this.startPing();
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const message: GameMessage = JSON.parse(event.data);
-          this.handleMessage(message);
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+        // Validate that we have a gameId in the URL
+        if (!wsUrl.includes('gameId=')) {
+          const error = new Error('Cannot connect without gameId parameter');
+          console.error(error.message);
+          this.isConnecting = false;
+          this.connectionPromise = null;
+          reject(error);
+          return;
         }
-      };
 
-      this.ws.onclose = (event) => {
-        console.log('WebSocket closed:', event.code, event.reason);
-        this.isConnecting = false;
-        this.stopPing();
-
-        // Only try to reconnect if it's not a service unavailable error
-        if (event.code !== 1011 && event.code !== 1012) {
-          this.scheduleReconnect();
-        } else {
-          console.log('WebSocket service unavailable, not attempting reconnect');
+        // Disconnect existing connection if any
+        if (this.ws) {
+          this.ws.close(1000, 'Reconnecting');
+          this.ws = null;
         }
-      };
 
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+          console.log('WebSocket connected for game:', this.currentGameId);
+          this.isConnecting = false;
+          this.reconnectAttempts = 0;
+          this.reconnectDelay = 1000;
+          this.startPing();
+          this.connectionPromise = null;
+          resolve();
+        };
+
+        this.ws.onmessage = (event) => {
+          try {
+            const message: GameMessage = JSON.parse(event.data);
+            this.handleMessage(message);
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+          }
+        };
+
+        this.ws.onclose = (event) => {
+          console.log('WebSocket closed:', event.code, event.reason);
+          this.isConnecting = false;
+          this.stopPing();
+          this.connectionPromise = null;
+
+          // Only try to reconnect if it's not a service unavailable error and we have a gameId
+          if (event.code !== 1011 && event.code !== 1012 && this.currentGameId) {
+            this.scheduleReconnect();
+          } else {
+            console.log('WebSocket service unavailable or no gameId, not attempting reconnect');
+          }
+
+          // If this was an unexpected close, reject the promise
+          if (event.code !== 1000 && this.connectionPromise) {
+            reject(new Error(`WebSocket closed unexpectedly: ${event.code} ${event.reason}`));
+          }
+        };
+
+        this.ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          this.isConnecting = false;
+          this.connectionPromise = null;
+          reject(error);
+        };
+
+      } catch (error) {
+        console.error('Failed to create WebSocket connection:', error);
         this.isConnecting = false;
-      };
+        this.connectionPromise = null;
+        reject(error);
+      }
+    });
 
-    } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      this.isConnecting = false;
-    }
+    return this.connectionPromise;
   }
 
   disconnect(): void {
     this.stopPing();
+    this.currentGameId = null; // Clear gameId to prevent reconnection attempts
+    this.connectionPromise = null;
+
     if (this.ws) {
       this.ws.close(1000, 'Client disconnect');
       this.ws = null;
@@ -113,8 +165,16 @@ export class GameWebSocketClient {
       return true;
     }
 
+    if (!this.currentGameId) {
+      console.warn('Cannot wait for connection without a gameId');
+      return false;
+    }
+
+    // Start connection if not already connecting
     if (!this.isConnecting && !this.ws) {
-      await this.connect();
+      await this.connect(this.currentGameId).catch(() => {
+        // Connection failed, but we'll still wait to see if it eventually connects
+      });
     }
 
     const startTime = Date.now();
@@ -129,23 +189,40 @@ export class GameWebSocketClient {
   }
 
   subscribeToGame(gameId: string, playerId: string): void {
-    // First connect with the specific gameId
+    if (!gameId) {
+      console.error('Cannot subscribe to game without gameId');
+      return;
+    }
+
+    // Connect with the specific gameId and then subscribe
     this.connect(gameId).then(() => {
       if (this.isConnected()) {
+        console.log('Subscribing to game:', gameId, 'as player:', playerId);
         this.send({
           type: 'subscribe',
           gameId,
           playerId
         });
+      } else {
+        console.warn('Cannot subscribe: WebSocket not connected');
       }
+    }).catch(error => {
+      console.error('Failed to connect for subscription:', error);
     });
   }
 
   unsubscribeFromGame(gameId: string): void {
-    if (!this.isConnected()) {
+    if (!gameId) {
+      console.error('Cannot unsubscribe from game without gameId');
       return;
     }
 
+    if (!this.isConnected()) {
+      console.warn('Cannot unsubscribe: WebSocket not connected');
+      return;
+    }
+
+    console.log('Unsubscribing from game:', gameId);
     this.send({
       type: 'unsubscribe',
       gameId
@@ -253,13 +330,20 @@ export class GameWebSocketClient {
       return;
     }
 
+    if (!this.currentGameId) {
+      console.log('No gameId available for reconnection');
+      return;
+    }
+
     this.reconnectAttempts++;
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
     console.log(`Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
 
     setTimeout(() => {
-      this.connect(); // Will use stored currentGameId
+      if (this.currentGameId) {
+        this.connect(this.currentGameId);
+      }
     }, delay);
   }
 }

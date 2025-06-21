@@ -6,7 +6,7 @@
   export let gameStatus: string | null = null;
   export let onGameUpdate: (gameId: string) => Promise<void> = async () => {};
   export let enabled: boolean = true;
-  export let pollingInterval: number = 1000; // milliseconds
+  export let pollingInterval: number = 2000; // milliseconds
 
   // State
   let devPollingInterval: number | null = null;

@@ -52,9 +52,6 @@
 
   async function createNewGame() {
     try {
-      console.log('Creating game with playerName:', playerName);
-
-      // Create the game via HTTP API first
       const response = await fetch('/api/game/new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,23 +81,35 @@
       if (wsClient && gameState) {
         console.log('Attempting WebSocket connection for game:', gameState.gameId);
         try {
-          // Connect directly to the deployed WebSocket worker
+          // Validate that we have all required data before connecting
+          if (!gameState.gameId) {
+            console.error('Cannot connect to WebSocket: missing gameId');
+            return;
+          }
+
+          if (!playerId) {
+            console.error('Cannot connect to WebSocket: missing playerId');
+            return;
+          }
+
+          // Connect to WebSocket with proper error handling
           await wsClient.connect(gameState.gameId);
 
-          // Give it a moment to connect
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Wait a moment for the connection to establish
+          const connected = await wsClient.waitForConnection(3000);
 
-          if (wsClient.isConnected()) {
+          if (connected) {
             console.log('✅ WebSocket connected successfully! Subscribing to updates...');
             wsClient.subscribeToGame(gameState.gameId, playerId);
-
-            // Note: GamePoller will start automatically when gameState becomes non-null
           } else {
-            console.warn('❌ WebSocket connection failed');
+            console.warn('❌ WebSocket connection timeout - falling back to polling');
           }
         } catch (wsError) {
           console.error('WebSocket connection error:', wsError);
+          console.log('Falling back to polling for game updates');
         }
+      } else {
+        console.warn('Cannot connect to WebSocket: missing wsClient or gameState');
       }
 
     } catch (error) {
@@ -119,12 +128,24 @@
     // Note: GameTimer and GamePoller components will handle their own cleanup
   });
 
+  // Improved loadGameState function with better error handling
   async function loadGameState(gameId: string) {
+    if (!gameId) {
+      throw new Error('Cannot load game state without gameId');
+    }
+
     try {
       const response = await fetch(`/api/game/${gameId}`);
-      if (!response.ok) throw new Error('Failed to load game');
+      if (!response.ok) {
+        throw new Error(`Failed to load game: ${response.status} ${response.statusText}`);
+      }
 
       const data = await response.json();
+
+      // Validate the response data
+      if (!data.gameId) {
+        throw new Error('Invalid game data: missing gameId');
+      }
 
       // If we don't have a playerId yet, try to determine it based on our player name
       if (!playerId && data.player1 === playerName) {
@@ -155,12 +176,18 @@
         } : undefined,
         lastPlayer: data.lastPlayer || '',
         createdAt: Date.now(),
-        lastMoveAt: data.lastMoveAt
+        lastMoveAt: data.lastMoveAt,
+        winner: data.winner || null
       };
 
-      console.log('Game state loaded:', gameState);
+      if (wasMyTurn !== isMyTurn) {
+        console.log('Turn changed - My symbol:', mySymbol, 'Next player:', data.nextPlayer || gameState.lastPlayer === '' ? 'X' : (gameState.lastPlayer === 'X' ? 'O' : 'X'), 'Is my turn:', isMyTurn);
+      }
 
-      // Determine current player and if it's my turn
+      if (previousBoard && previousBoard !== gameState.board) {
+        console.log('Board updated from:', previousBoard, 'to:', gameState.board);
+      }
+
       const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
 
       // For PENDING games, only player 1 (X) should be "ready" but not actively playing
@@ -179,8 +206,10 @@
         const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
         playGameOverSound(data.status, mySymbol);
       }
+
     } catch (error) {
       console.error('Error loading game state:', error);
+      throw error; // Re-throw to be handled by caller
     }
   }
 
