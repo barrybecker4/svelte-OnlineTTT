@@ -5,6 +5,10 @@ import { GameStorage } from '$lib/storage/games.ts';
 import { createNewGame, addPlayer2ToGame } from '$lib/game/state.ts';
 import { notifyPlayerJoined } from '$lib/server/websocket.ts';
 
+function isLocalDevelopment(platform: any): boolean {
+	return !platform?.env.WEBSOCKET_HIBERNATION_SERVER;
+}
+
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const { playerName } = await request.json();
 	
@@ -18,15 +22,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   console.log('Full platform object keys:', Object.keys(platform || {}));
   console.log('WEBSOCKET_HIBERNATION_SERVER:', platform?.env.WEBSOCKET_HIBERNATION_SERVER);
   console.log('Any WEBSOCKET services:', Object.keys(platform?.env || {}).filter(key => key.includes('WEBSOCKET')));
-
-  if (platform?.env.WEBSOCKET_HIBERNATION_SERVER) {
-    console.log('WebSocket service IS available');
-  } else {
-    console.log('WebSocket service NOT available');
-  }
+  console.log('WebSocket service available: ', platform?.env.WEBSOCKET_HIBERNATION_SERVER);
 
 	const kv = new KVStorage(platform!);
 	const gameStorage = new GameStorage(kv);
+	const isLocal = isLocalDevelopment(platform);
 
 	// Look for open games
 	const openGames = await gameStorage.getOpenGames();
@@ -40,26 +40,25 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		const updatedGame = addPlayer2ToGame(availableGame, playerName);
 		await gameStorage.saveGame(updatedGame);
 		
-		// Try to notify player 1 that player 2 has joined via WebSocket
-		// This will fail gracefully in local development
-		if (platform?.env.WEBSOCKET_HIBERNATION_SERVER) {
-			try {
-				console.log('Attempting to send WebSocket notification...');
-				await notifyPlayerJoined(updatedGame.gameId, updatedGame, platform.env.WEBSOCKET_HIBERNATION_SERVER);
-				console.log('WebSocket notification sent successfully');
-			} catch (error) {
-				console.warn('WebSocket notification failed (expected in local development):', error.message || error);
-				// Don't fail the request - WebSocket is optional in development
-			}
+		// Handle WebSocket notifications based on environment
+		if (isLocal) {
+			console.log('🏠 LOCAL DEV: Using polling for game updates (WebSocket notifications disabled)');
+			console.log('   ℹ️  Player 2 joined - updates will sync via polling every 2 seconds');
 		} else {
-			console.log('WebSocket service not available (local development mode)');
+			try {
+				console.log('🚀 PRODUCTION: Sending instant WebSocket notification...');
+				await notifyPlayerJoined(updatedGame.gameId, updatedGame, platform!.env.WEBSOCKET_HIBERNATION_SERVER);
+				console.log('✅ WebSocket notification sent successfully');
+			} catch (error) {
+				console.error('❌ WebSocket notification failed in production:', error);
+			}
 		}
 
 		return json({
 			gameId: updatedGame.gameId,
 			player1: updatedGame.player1.name,
 			player2: updatedGame.player2!.name,
-			playerId: updatedGame.player2!.id, // Return the actual player ID
+			playerId: updatedGame.player2!.id,
 			playerSymbol: 'O',
 			status: 'ACTIVE'
 		});
@@ -68,11 +67,17 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		const newGame = createNewGame(playerName);
 		await gameStorage.saveGame(newGame);
 
+		if (isLocal) {
+			console.log('🏠 LOCAL DEV: Game created - waiting for player 2 (will detect via polling)');
+		} else {
+			console.log('🚀 PRODUCTION: Game created - WebSocket notifications enabled');
+		}
+
 		return json({
 			gameId: newGame.gameId,
 			player1: newGame.player1.name,
 			player2: null,
-			playerId: newGame.player1.id, // Return the actual player ID
+			playerId: newGame.player1.id,
 			playerSymbol: 'X',
 			status: 'PENDING'
 		});
