@@ -67,6 +67,8 @@
 
       const data = await response.json();
       console.log('Game creation response:', data);
+      wsWorking = data.webSocketNotificationsEnabled || false;
+      console.log('WebSocket notifications enabled:', wsWorking);
 
       // Set our player ID
       playerId = data.playerId;

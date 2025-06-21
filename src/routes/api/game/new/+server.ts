@@ -11,7 +11,7 @@ function isLocalDevelopment(platform: any): boolean {
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   const { playerName } = await request.json();
-  
+
   if (!playerName) {
     return json({ error: 'Player name required' }, { status: 400 });
   }
@@ -23,16 +23,17 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   const kv = new KVStorage(platform!);
   const gameStorage = new GameStorage(kv);
   const isLocal = !platform?.env.WEBSOCKET_HIBERNATION_SERVER;
+  console.log('Environment detection - isLocal:', isLocal, 'WEBSOCKET_HIBERNATION_SERVER available:', !!platform?.env.WEBSOCKET_HIBERNATION_SERVER);
 
   const openGames = await gameStorage.getOpenGames();
-  const availableGame = openGames.find(game => 
+  const availableGame = openGames.find(game =>
     game.player1.name !== playerName && !game.player2
   );
 
   if (availableGame) {
     const updatedGame = addPlayer2ToGame(availableGame, playerName);
     await gameStorage.saveGame(updatedGame);
-    
+
     // Handle WebSocket notifications based on environment
     if (platform?.env.WEBSOCKET_HIBERNATION_SERVER) {
       try {
@@ -53,7 +54,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       player2: updatedGame.player2!.name,
       playerId: updatedGame.player2!.id,
       playerSymbol: 'O',
-      status: 'ACTIVE'
+      status: 'ACTIVE',
+      webSocketNotificationsEnabled: !isLocal
     });
   } else {
     const newGame = createNewGame(playerName);
@@ -68,7 +70,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       player2: null,
       playerId: newGame.player1.id,
       playerSymbol: 'X',
-      status: 'PENDING'
+      status: 'PENDING',
+      webSocketNotificationsEnabled: !isLocal
     });
   }
 };
