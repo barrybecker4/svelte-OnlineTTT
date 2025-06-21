@@ -3,7 +3,7 @@
 import type { GameState } from '../types/game.ts';
 
 export interface GameMessage {
-  type: 'gameUpdate' | 'playerJoined' | 'gameEnded' | 'error';
+  type: 'gameUpdate' | 'playerJoined' | 'gameEnded' | 'error' | 'subscribed' | 'pong';
   gameId: string;
   data: any;
   timestamp: number;
@@ -11,29 +11,25 @@ export interface GameMessage {
 
 // Helper function to extract only serializable data from GameState
 function serializeGameState(gameState: GameState) {
-  return {
-    gameId: gameState.gameId,
-    board: gameState.board,
-    status: gameState.status,
-    player1: {
-      id: gameState.player1.id,
-      name: gameState.player1.name,
-      symbol: gameState.player1.symbol
-    },
-    player2: gameState.player2
-      ? {
-          id: gameState.player2.id,
-          name: gameState.player2.name,
-          symbol: gameState.player2.symbol
-        }
-      : null,
-    lastPlayer: gameState.lastPlayer,
-    lastMoveAt: gameState.lastMoveAt,
-    winner: gameState.winner || null
-  };
-}
+    return {
+      gameId: gameState.gameId,
+      board: gameState.board,
+      status: gameState.status,
+      player1: {
+        id: gameState.player1.id,
+        name: gameState.player1.name,
+        symbol: gameState.player1.symbol
+      },
+      player2: gameState.player2 ? {
+        id: gameState.player2.id,
+        name: gameState.player2.name,
+        symbol: gameState.player2.symbol
+      } : null,
+      lastPlayer: gameState.lastPlayer,
+      lastMoveAt: gameState.lastMoveAt
+    };
+  }
 
-// Rest of WebSocketHibernationServer class remains the same...
 export class WebSocketHibernationServer implements DurableObject {
   private sessions: Map<string, WebSocket> = new Map();
   private gameSubscriptions: Map<string, Set<string>> = new Map();
@@ -111,23 +107,22 @@ export class WebSocketHibernationServer implements DurableObject {
 
     if (url.pathname === '/notify' && request.method === 'POST') {
       try {
-        const { gameId, message } = await request.json();
+        const body = await request.json() as { gameId: string; message: GameMessage };
+        const { gameId, message } = body;
         await this.broadcastToGame(gameId, message);
         return new Response(JSON.stringify({ success: true }), {
-          headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' }
         });
       } catch (error) {
         console.error('WebSocket notification error:', error);
-        return new Response(
-          JSON.stringify({
-            error: 'Failed to send notification',
-            details: error.message
-          }),
-          {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-          }
-        );
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return new Response(JSON.stringify({ 
+        error: 'Failed to send notification',
+        details: errorMessage 
+        }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+        });
       }
     }
 

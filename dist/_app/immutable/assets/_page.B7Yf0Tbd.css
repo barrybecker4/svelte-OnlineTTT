@@ -1,0 +1,11 @@
+.container.svelte-9fja02 {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  text-align: center;
+}
+@media (max-width: 768px) {
+  .container.svelte-9fja02 {
+    padding: 10px;
+  }
+}

@@ -1,0 +1,257 @@
+.game-board.svelte-2620hu {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  width: 300px;
+  height: 300px;
+  margin: 0 auto;
+  padding: 8px;
+  background: #058;
+  border-radius: 8px;
+}
+.cell.svelte-2620hu {
+  background: #def;
+  border: 2px solid #005588;
+  border-radius: 4px;
+  font-size: 48px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cell.svelte-2620hu:hover:not(.disabled):not(.occupied) {
+  background: #cdf;
+  transform: scale(1.05);
+}
+.cell.hover-x.svelte-2620hu:hover:not(.occupied):before {
+  content: 'X';
+  color: #666;
+  opacity: 0.5;
+}
+.cell.hover-o.svelte-2620hu:hover:not(.occupied):before {
+  content: 'O';
+  color: #666;
+  opacity: 0.5;
+}
+.cell.occupied.svelte-2620hu {
+  cursor: default;
+}
+.cell.disabled.svelte-2620hu {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.cell.winning.svelte-2620hu {
+  background: #fe8;
+  animation: svelte-2620hu-winning-pulse 1s ease-in-out infinite alternate;
+}
+.symbol.x.svelte-2620hu {
+  color: #f44;
+}
+.symbol.o.svelte-2620hu {
+  color: #44f;
+}
+@keyframes svelte-2620hu-winning-pulse {
+  0% {
+    background: #fe8;
+  }
+  to {
+    background: #fc4;
+  }
+}
+@media (max-width: 768px) {
+  .game-board.svelte-2620hu {
+    width: 250px;
+    height: 250px;
+  }
+  .cell.svelte-2620hu {
+    font-size: 36px;
+  }
+}
+.game-status.svelte-tzet23 {
+  text-align: center;
+  margin: 20px 0;
+  padding: 20px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+.game-status.pending.svelte-tzet23 {
+  background: #fff3cd;
+  border: 2px solid #ffeaa7;
+}
+.game-status.active.svelte-tzet23 {
+  background: #d1ecf1;
+  border: 2px solid #bee5eb;
+}
+.game-status.complete.svelte-tzet23 {
+  background: #d4edda;
+  border: 2px solid #c3e6cb;
+}
+.status-message.svelte-tzet23 {
+  color: #058;
+  margin: 0 0 10px;
+  font-size: 24px;
+}
+.timer.svelte-tzet23 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #666;
+  margin: 10px 0;
+}
+.timer.warning.svelte-tzet23 {
+  color: #f44;
+  animation: svelte-tzet23-pulse 1s ease-in-out infinite;
+}
+.help-text.svelte-tzet23 {
+  color: #856404;
+  font-style: italic;
+  margin: 10px 0;
+}
+.players.svelte-tzet23 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 15px;
+}
+.player.svelte-tzet23 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+.player.active.svelte-tzet23 {
+  background: #0055881a;
+  border: 2px solid #005588;
+}
+.symbol.svelte-tzet23 {
+  font-size: 20px;
+  font-weight: 700;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.symbol.x.svelte-tzet23 {
+  color: #f44;
+  background: #ff44441a;
+}
+.symbol.o.svelte-tzet23 {
+  color: #44f;
+  background: #4444ff1a;
+}
+.name.svelte-tzet23 {
+  font-weight: 500;
+  color: #058;
+}
+.vs.svelte-tzet23 {
+  color: #666;
+  font-weight: 700;
+}
+@keyframes svelte-tzet23-pulse {
+  0%,
+  to {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+@media (max-width: 768px) {
+  .players.svelte-tzet23 {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .vs.svelte-tzet23 {
+    order: 2;
+  }
+}
+.game-controls.svelte-1n7qm67 {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin: 20px 0;
+}
+.btn.svelte-1n7qm67 {
+  padding: 12px 24px;
+  font-size: 18px;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+.btn.svelte-1n7qm67:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px #0003;
+}
+.btn.svelte-1n7qm67:active {
+  transform: translateY(0);
+}
+.btn-primary.svelte-1n7qm67 {
+  background: #058;
+  color: #fff;
+}
+.btn-primary.svelte-1n7qm67:hover {
+  background: #046;
+}
+.btn-secondary.svelte-1n7qm67 {
+  background: #6c757d;
+  color: #fff;
+}
+.btn-secondary.svelte-1n7qm67:hover {
+  background: #5a6268;
+}
+@media (max-width: 768px) {
+  .game-controls.svelte-1n7qm67 {
+    flex-direction: column;
+    align-items: center;
+  }
+  .btn.svelte-1n7qm67 {
+    width: 200px;
+  }
+}
+.player-history.svelte-3m1vbq {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 16px;
+  max-width: 500px;
+  margin: 20px auto;
+}
+.player-history.svelte-3m1vbq h3:where(.svelte-3m1vbq) {
+  color: #058;
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+.history-content.svelte-3m1vbq {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #495057;
+}
+.history-content.svelte-3m1vbq strong {
+  color: #058;
+  font-weight: 600;
+}
+@media (max-width: 768px) {
+  .player-history.svelte-3m1vbq {
+    margin: 20px 10px;
+  }
+}
+.container.svelte-9fja02 {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  text-align: center;
+}
+@media (max-width: 768px) {
+  .container.svelte-9fja02 {
+    padding: 10px;
+  }
+}

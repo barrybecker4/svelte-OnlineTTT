@@ -24,7 +24,7 @@ class GameAudio {
   /**
    * Create a tone with specified frequency, duration, and volume
    */
-  private async createTone(frequency: number, duration: number, volume: number): void {
+  private async createTone(frequency: number, duration: number, volume: number): Promise<void> {
     const audioContext = this.getAudioContext();
     if (!audioContext) return;
 
