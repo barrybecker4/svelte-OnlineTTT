@@ -262,22 +262,21 @@
     }
   }
 
-  async function quitGame() {
+  async function endGame(reason: 'RESIGN' | 'TIMEOUT') {
     if (!gameState) return;
 
     try {
       const response = await fetch(`/api/game/${gameState.gameId}/quit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId, reason: 'RESIGN' })
+        body: JSON.stringify({ playerId, reason })
       });
 
       if (response.ok) {
-        // WebSocket will notify us of the game state change
-        console.log('Game quit successfully');
+        console.log(`Game ended: ${reason.toLowerCase()}`);
       }
     } catch (error) {
-      console.error('Error quitting game:', error);
+      console.error('Error ending game:', error);
     }
   }
 
@@ -407,7 +406,7 @@
     <!-- GameTimer Component - replaces timer variables and functions -->
     <GameTimer
       {isMyTurn}
-      onTimeout={quitGame}
+      onTimeout={() => endGame('TIMEOUT')}
       timerDuration={10}
     />
 
@@ -440,7 +439,7 @@
       canQuit={gameState && (gameState.status === 'ACTIVE' || gameState.status === 'PENDING')}
       isInGame={gameState !== null}
       on:newGame={() => { gameState = null; }}
-      on:quitGame={quitGame}
+      on:quitGame={() => endGame('RESIGN')}
     />
   </div>
 {/if}
