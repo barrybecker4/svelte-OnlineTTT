@@ -1,4 +1,3 @@
-// websocket-worker/src/index.ts
 import { WebSocketHibernationServer } from '../../src/lib/server/websocket';
 
 // Export the Durable Object class - this is required for Cloudflare to recognize it

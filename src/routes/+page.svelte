@@ -269,7 +269,7 @@
     gameState.lastMoveAt = data.lastMoveAt;
 
     if (fromWebSocket) {
-      wsActuallyWorking = true;
+      wsWorking = true;
       console.log('📩 Real WebSocket notification - disabling polling');
     }
 
