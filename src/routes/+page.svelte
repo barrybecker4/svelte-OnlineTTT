@@ -111,7 +111,6 @@
       } else {
         console.warn('Cannot connect to WebSocket: missing wsClient or gameState');
       }
-
     } catch (error) {
       console.error('Error creating game:', error);
       alert('Failed to create game. Please try again.');
@@ -169,11 +168,13 @@
           symbol: 'X',
           name: data.player1
         },
-        player2: data.player2 ? {
-          id: data.player2Id,
-          symbol: 'O',
-          name: data.player2
-        } : undefined,
+        player2: data.player2
+          ? {
+              id: data.player2Id,
+              symbol: 'O',
+              name: data.player2
+            }
+          : undefined,
         lastPlayer: data.lastPlayer || '',
         createdAt: Date.now(),
         lastMoveAt: data.lastMoveAt,
@@ -181,7 +182,14 @@
       };
 
       if (wasMyTurn !== isMyTurn) {
-        console.log('Turn changed - My symbol:', mySymbol, 'Next player:', data.nextPlayer || gameState.lastPlayer === '' ? 'X' : (gameState.lastPlayer === 'X' ? 'O' : 'X'), 'Is my turn:', isMyTurn);
+        console.log(
+          'Turn changed - My symbol:',
+          mySymbol,
+          'Next player:',
+          data.nextPlayer || gameState.lastPlayer === '' ? 'X' : gameState.lastPlayer === 'X' ? 'O' : 'X',
+          'Is my turn:',
+          isMyTurn
+        );
       }
 
       if (previousBoard && previousBoard !== gameState.board) {
@@ -206,7 +214,6 @@
         const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
         playGameOverSound(data.status, mySymbol);
       }
-
     } catch (error) {
       console.error('Error loading game state:', error);
       throw error; // Re-throw to be handled by caller
@@ -253,7 +260,6 @@
 
       // Update local game state immediately for better UX
       updateGameStateFromWebSocket(data, false);
-
     } catch (error) {
       console.error('Error making move:', error);
 
@@ -310,7 +316,14 @@
       console.log('WebSocket update - Game still PENDING');
     } else {
       isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
-      console.log('WebSocket turn update - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
+      console.log(
+        'WebSocket turn update - My symbol:',
+        mySymbol,
+        'Next player:',
+        data.nextPlayer,
+        'Is my turn:',
+        isMyTurn
+      );
     }
 
     // Note: Timer management is now handled by GameTimer component
@@ -346,11 +359,13 @@
 
     // Update game state with new player info
     gameState.status = data.status;
-    gameState.player2 = data.player2 ? {
-      id: data.player2.id,
-      symbol: 'O',
-      name: data.player2.name
-    } : undefined;
+    gameState.player2 = data.player2
+      ? {
+          id: data.player2.id,
+          symbol: 'O',
+          name: data.player2.name
+        }
+      : undefined;
     gameState.lastPlayer = data.lastPlayer;
     gameState.lastMoveAt = data.lastMoveAt;
 
@@ -358,7 +373,16 @@
     const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
     isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
 
-    console.log('Player joined - Game status:', data.status, 'My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
+    console.log(
+      'Player joined - Game status:',
+      data.status,
+      'My symbol:',
+      mySymbol,
+      'Next player:',
+      data.nextPlayer,
+      'Is my turn:',
+      isMyTurn
+    );
 
     // Note: Timer start is now handled by GameTimer component via isMyTurn prop changes
   }
@@ -390,67 +414,62 @@
   <h1 class="mb-6 text-center text-3xl font-bold">Online Tic-Tac-Toe</h1>
 
   {#if !gameState}
-  <div class="rounded-lg bg-white p-6 shadow-md">
-    <div class="text-center">
-      <h2 class="mb-4 text-xl font-semibold">Ready to Play?</h2>
-      <button
-        on:click={createNewGame}
-        class="rounded bg-blue-500 px-6 py-2 text-white hover:bg-blue-600"
-      >
-        Play
-      </button>
+    <div class="rounded-lg bg-white p-6 shadow-md">
+      <div class="text-center">
+        <h2 class="mb-4 text-xl font-semibold">Ready to Play?</h2>
+        <button on:click={createNewGame} class="rounded bg-blue-500 px-6 py-2 text-white hover:bg-blue-600">
+          Play
+        </button>
+      </div>
     </div>
-  </div>
-{:else}
-  <div class="space-y-4">
-    <!-- GameTimer Component - replaces timer variables and functions -->
-    <GameTimer
-      {isMyTurn}
-      onTimeout={() => endGame('TIMEOUT')}
-      timerDuration={10}
-    />
+  {:else}
+    <div class="space-y-4">
+      <!-- GameTimer Component - replaces timer variables and functions -->
+      <GameTimer {isMyTurn} onTimeout={() => endGame('TIMEOUT')} timerDuration={10} />
 
-    <!-- GamePoller Component - only enabled when WebSocket is not connected -->
-    <GamePoller
-      gameId={gameState.gameId}
-      gameStatus={gameState.status}
-      onGameUpdate={loadGameState}
-      enabled={!wsWorking}
-    />
+      <!-- GamePoller Component - only enabled when WebSocket is not connected -->
+      <GamePoller
+        gameId={gameState.gameId}
+        gameStatus={gameState.status}
+        onGameUpdate={loadGameState}
+        enabled={!wsWorking}
+      />
 
-    <GameStatus
-      status={gameState.status}
-      currentPlayer={getCurrentPlayerSymbol()}
-      player1Name={gameState.player1.name}
-      player2Name={gameState.player2?.name || null}
-      {isMyTurn}
-      timeRemaining={null}
-    />
+      <GameStatus
+        status={gameState.status}
+        currentPlayer={getCurrentPlayerSymbol()}
+        player1Name={gameState.player1.name}
+        player2Name={gameState.player2?.name || null}
+        {isMyTurn}
+        timeRemaining={null}
+      />
 
-    <GameBoard
-      board={gameState.board}
-      disabled={!isMyTurn || gameState.status !== 'ACTIVE'}
-      currentPlayerSymbol={getCurrentPlayerSymbol()}
-      on:cellClick={(e) => makeMove(e.detail.position)}
-    />
+      <GameBoard
+        board={gameState.board}
+        disabled={!isMyTurn || gameState.status !== 'ACTIVE'}
+        currentPlayerSymbol={getCurrentPlayerSymbol()}
+        on:cellClick={e => makeMove(e.detail.position)}
+      />
 
-    <GameControls
-      gameStatus={gameState?.status || 'PENDING'}
-      canQuit={gameState && (gameState.status === 'ACTIVE' || gameState.status === 'PENDING')}
-      isInGame={gameState !== null}
-      on:newGame={() => { gameState = null; }}
-      on:quitGame={() => endGame('RESIGN')}
-    />
-  </div>
-{/if}
+      <GameControls
+        gameStatus={gameState?.status || 'PENDING'}
+        canQuit={gameState && (gameState.status === 'ACTIVE' || gameState.status === 'PENDING')}
+        isInGame={gameState !== null}
+        on:newGame={() => {
+          gameState = null;
+        }}
+        on:quitGame={() => endGame('RESIGN')}
+      />
+    </div>
+  {/if}
 
-{#if gameHistory}
-  <PlayerHistory
-    {gameHistory}
-    currentPlayerName={playerName}
-    opponentName={gameState?.player1.id === playerId ? gameState.player2?.name || null : gameState?.player1.name}
-  />
-{/if}
+  {#if gameHistory}
+    <PlayerHistory
+      {gameHistory}
+      currentPlayerName={playerName}
+      opponentName={gameState?.player1.id === playerId ? gameState.player2?.name || null : gameState?.player1.name}
+    />
+  {/if}
 </div>
 
 <style>

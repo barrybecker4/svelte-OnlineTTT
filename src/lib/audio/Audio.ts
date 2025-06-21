@@ -25,31 +25,31 @@ class GameAudio {
    * Create a tone with specified frequency, duration, and volume
    */
   private async createTone(frequency: number, duration: number, volume: number): void {
-      const audioContext = this.getAudioContext();
-      if (!audioContext) return;
+    const audioContext = this.getAudioContext();
+    if (!audioContext) return;
 
-      // Resume AudioContext if it's suspended (required for game-end sounds)
-      if (audioContext.state === 'suspended') {
-        console.log('🔊 Resuming suspended AudioContext');
-        await audioContext.resume();
-      }
+    // Resume AudioContext if it's suspended (required for game-end sounds)
+    if (audioContext.state === 'suspended') {
+      console.log('🔊 Resuming suspended AudioContext');
+      await audioContext.resume();
+    }
 
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
 
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
 
-      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-      oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+    oscillator.type = 'sine';
 
-      const effectiveVolume = volume * this.volume;
-      gainNode.gain.setValueAtTime(effectiveVolume, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+    const effectiveVolume = volume * this.volume;
+    gainNode.gain.setValueAtTime(effectiveVolume, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
 
-      // Play the sound
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + duration);
+    // Play the sound
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration);
   }
 
   /**
@@ -84,7 +84,7 @@ class GameAudio {
    * Play victory sound when player wins
    */
   playGameWon(): void {
-    setTimeout(() => this.createTone(523, 0.2, 0.4), 0);   // C5
+    setTimeout(() => this.createTone(523, 0.2, 0.4), 0); // C5
     setTimeout(() => this.createTone(659, 0.2, 0.4), 150); // E5
     setTimeout(() => this.createTone(784, 0.3, 0.5), 300); // G5
   }
@@ -93,7 +93,7 @@ class GameAudio {
    * Play defeat sound when player loses
    */
   playGameLost(): void {
-    setTimeout(() => this.createTone(392, 0.2, 0.3), 0);   // G4
+    setTimeout(() => this.createTone(392, 0.2, 0.3), 0); // G4
     setTimeout(() => this.createTone(330, 0.2, 0.3), 150); // E4
     setTimeout(() => this.createTone(262, 0.4, 0.4), 300); // C4
   }

@@ -71,8 +71,8 @@
     transition: all 0.2s ease;
     width: 100%;
     height: 100%;
-    min-height: 90px;  /* Prevent shrinking */
-    min-width: 90px;   /* Prevent shrinking */
+    min-height: 90px; /* Prevent shrinking */
+    min-width: 90px; /* Prevent shrinking */
 
     /* Fix: Use flexbox for perfect centering without affecting cell size */
     display: flex;
@@ -149,8 +149,8 @@
 
     .cell {
       font-size: 36px;
-      min-height: 75px;  /* Adjust for mobile */
-      min-width: 75px;   /* Adjust for mobile */
+      min-height: 75px; /* Adjust for mobile */
+      min-width: 75px; /* Adjust for mobile */
     }
   }
 </style>

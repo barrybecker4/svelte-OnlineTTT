@@ -64,7 +64,6 @@ export function isGameComplete(game: GameState): boolean {
   return game.status !== 'PENDING' && game.status !== 'ACTIVE';
 }
 
-
 /**
  * Get the player whose turn it is (or would be once game starts)
  */

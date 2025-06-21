@@ -20,25 +20,28 @@ function serializeGameState(gameState: GameState) {
       name: gameState.player1.name,
       symbol: gameState.player1.symbol
     },
-    player2: gameState.player2 ? {
-      id: gameState.player2.id,
-      name: gameState.player2.name,
-      symbol: gameState.player2.symbol
-    } : null,
+    player2: gameState.player2
+      ? {
+          id: gameState.player2.id,
+          name: gameState.player2.name,
+          symbol: gameState.player2.symbol
+        }
+      : null,
     lastPlayer: gameState.lastPlayer,
     lastMoveAt: gameState.lastMoveAt,
     winner: gameState.winner || null
   };
 }
 
-
-
 // Rest of WebSocketHibernationServer class remains the same...
 export class WebSocketHibernationServer implements DurableObject {
   private sessions: Map<string, WebSocket> = new Map();
   private gameSubscriptions: Map<string, Set<string>> = new Map();
 
-  constructor(private state: DurableObjectState, private env: any) {
+  constructor(
+    private state: DurableObjectState,
+    private env: any
+  ) {
     // Recover subscriptions from storage after hibernation/restart
     this.recoverSubscriptions();
   }
@@ -46,19 +49,19 @@ export class WebSocketHibernationServer implements DurableObject {
   private async recoverSubscriptions() {
     try {
       const storageData = await this.state.storage.list();
-      
+
       for (const [key, value] of storageData) {
         if (typeof key === 'string' && key.startsWith('session:') && key.endsWith(':gameId')) {
           const sessionId = key.split(':')[1];
           const gameId = value as string;
-          
+
           if (!this.gameSubscriptions.has(gameId)) {
             this.gameSubscriptions.set(gameId, new Set());
           }
           this.gameSubscriptions.get(gameId)!.add(sessionId);
         }
       }
-      
+
       console.log('Recovered subscriptions for games:', Array.from(this.gameSubscriptions.keys()));
     } catch (error) {
       console.error('Failed to recover subscriptions:', error);
@@ -81,7 +84,7 @@ export class WebSocketHibernationServer implements DurableObject {
 
       server.accept();
 
-      server.addEventListener('message', (event) => {
+      server.addEventListener('message', event => {
         try {
           const message = JSON.parse(event.data as string);
           this.handleMessage(sessionId, message);
@@ -102,7 +105,7 @@ export class WebSocketHibernationServer implements DurableObject {
 
       return new Response(null, {
         status: 101,
-        webSocket: client,
+        webSocket: client
       });
     }
 
@@ -115,13 +118,16 @@ export class WebSocketHibernationServer implements DurableObject {
         });
       } catch (error) {
         console.error('WebSocket notification error:', error);
-        return new Response(JSON.stringify({ 
-          error: 'Failed to send notification',
-          details: error.message 
-        }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
+        return new Response(
+          JSON.stringify({
+            error: 'Failed to send notification',
+            details: error.message
+          }),
+          {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
       }
     }
 
@@ -183,11 +189,11 @@ export class WebSocketHibernationServer implements DurableObject {
 
   private handleDisconnect(sessionId: string) {
     this.sessions.delete(sessionId);
-    
+
     // Clean up session storage
     this.state.storage.delete(`session:${sessionId}:playerId`);
     this.state.storage.delete(`session:${sessionId}:gameId`);
-    
+
     // Remove from all game subscriptions
     for (const [gameId, subscribers] of this.gameSubscriptions) {
       if (subscribers.has(sessionId)) {
@@ -197,7 +203,7 @@ export class WebSocketHibernationServer implements DurableObject {
         }
       }
     }
-    
+
     console.log(`Session ${sessionId} disconnected`);
   }
 
@@ -218,7 +224,7 @@ export class WebSocketHibernationServer implements DurableObject {
   }
 
   private sendToSession(sessionId: string, message: GameMessage): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const ws = this.sessions.get(sessionId);
       if (ws && ws.readyState === ws.OPEN) {
         try {
@@ -242,7 +248,6 @@ export class WebSocketHibernationServer implements DurableObject {
   }
 }
 
-
 export async function notifyGameUpdate(
   gameId: string,
   gameState: GameState,
@@ -259,7 +264,7 @@ export async function notifyGameUpdate(
     gameId,
     data: {
       ...serializedGameState,
-      nextPlayer: gameState.lastPlayer === '' ? 'X' : (gameState.lastPlayer === 'X' ? 'O' : 'X')
+      nextPlayer: gameState.lastPlayer === '' ? 'X' : gameState.lastPlayer === 'X' ? 'O' : 'X'
     },
     timestamp: Date.now()
   };

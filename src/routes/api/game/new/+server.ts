@@ -6,7 +6,7 @@ import { createNewGame, addPlayer2ToGame } from '$lib/game/state.ts';
 import { notifyPlayerJoined } from '$lib/server/websocket.ts';
 
 function isLocalDevelopment(platform: any): boolean {
-	return !platform?.env.WEBSOCKET_HIBERNATION_SERVER;
+  return !platform?.env.WEBSOCKET_HIBERNATION_SERVER;
 }
 
 export const POST: RequestHandler = async ({ request, platform }) => {
@@ -23,12 +23,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   const kv = new KVStorage(platform!);
   const gameStorage = new GameStorage(kv);
   const isLocal = !platform?.env.WEBSOCKET_HIBERNATION_SERVER;
-  console.log('Environment detection - isLocal:', isLocal, 'WEBSOCKET_HIBERNATION_SERVER available:', !!platform?.env.WEBSOCKET_HIBERNATION_SERVER);
+  console.log(
+    'Environment detection - isLocal:',
+    isLocal,
+    'WEBSOCKET_HIBERNATION_SERVER available:',
+    !!platform?.env.WEBSOCKET_HIBERNATION_SERVER
+  );
 
   const openGames = await gameStorage.getOpenGames();
-  const availableGame = openGames.find(game =>
-    game.player1.name !== playerName && !game.player2
-  );
+  const availableGame = openGames.find(game => game.player1.name !== playerName && !game.player2);
 
   if (availableGame) {
     const updatedGame = addPlayer2ToGame(availableGame, playerName);

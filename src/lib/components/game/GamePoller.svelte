@@ -14,7 +14,16 @@
 
   // Reactive: start/stop polling based on props
   $: {
-    console.log('🔍 GamePoller reactive - enabled:', enabled, 'gameId:', gameId, 'status:', gameStatus, 'isPolling:', isPolling);
+    console.log(
+      '🔍 GamePoller reactive - enabled:',
+      enabled,
+      'gameId:',
+      gameId,
+      'status:',
+      gameStatus,
+      'isPolling:',
+      isPolling
+    );
 
     if (!enabled && isPolling) {
       console.log('🛑 GamePoller: Stopping polling - disabled by parent');
@@ -53,7 +62,8 @@
 
     devPollingInterval = setInterval(async () => {
       try {
-        if (gameId === gameIdToPoll) { // Make sure we're still polling the right game
+        if (gameId === gameIdToPoll) {
+          // Make sure we're still polling the right game
           console.log('📡 Polling for game updates...');
           await onGameUpdate(gameIdToPoll);
 
@@ -154,8 +164,13 @@
   }
 
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
   }
 
   .status {

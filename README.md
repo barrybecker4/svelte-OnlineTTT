@@ -67,6 +67,7 @@ npm run dev
 ```
 
 **How it works:**
+
 - Frontend runs locally via SvelteKit dev server
 - Connects to your deployed WebSocket worker for real-time features
 - Uses polling fallback for local development (where WebSocket notifications don't work)
@@ -78,7 +79,7 @@ npm run dev
 2. **Join with second player** - Open another browser tab/window, enter different name, click "Play"
 3. **Play in real-time** - Moves appear within 2 seconds in local development, instantly in production
 
-To run the unit tests, use `npm run test:unit`. 
+To run the unit tests, use `npm run test:unit`.
 To run e2e tests, use `npm run test:e2e`.
 
 ### 6. Cloudflare Deployment
@@ -107,12 +108,14 @@ Your app will be available at your Cloudflare Pages URL with instant real-time u
 ### Local vs Production
 
 **Local Development:**
+
 - Simple `npm run dev` setup
 - Connects to deployed WebSocket worker
 - Uses polling for game state updates (2-second intervals)
 - Perfect for development and testing
 
 **Production:**
+
 - Full Cloudflare Pages + Workers environment
 - WebSocket notifications work instantly
 - No polling needed
@@ -144,6 +147,7 @@ npm run check                  # Type checking
 ### WebSocket Worker URL
 
 The WebSocket client is configured to use:
+
 - **Deployed worker**: `svelte-ttt-websocket.barrybecker4.workers.dev`
 
 To use your own deployed worker, update `src/lib/websocket/client.ts`:
@@ -174,25 +178,28 @@ kv_namespaces = [
 ### Common Issues
 
 **Game not updating in real-time:**
+
 - In local development: This is expected, updates happen every 2 seconds via polling
 - In production: Check WebSocket connection in browser dev tools
 
 **WebSocket connection errors:**
+
 - Verify your WebSocket worker is deployed: `curl https://svelte-ttt-websocket.YOUR_USERNAME.workers.dev/health`
 - Check browser console for connection logs
 
 **Players can't join:**
+
 - Check that KV storage is working
 - Verify game creation API calls are succeeding
 
 ### Development vs Production Behavior
 
-| Feature | Local Development | Production |
-|---------|------------------|------------|
-| Player joining | Detected via polling (2s delay) | Instant WebSocket notification |
-| Move updates | Detected via polling (2s delay) | Instant WebSocket notification |
-| Setup complexity | Simple (`npm run dev`) | Automatic via Cloudflare Pages |
-| WebSocket worker | Uses deployed version | Uses deployed version |
+| Feature          | Local Development               | Production                     |
+| ---------------- | ------------------------------- | ------------------------------ |
+| Player joining   | Detected via polling (2s delay) | Instant WebSocket notification |
+| Move updates     | Detected via polling (2s delay) | Instant WebSocket notification |
+| Setup complexity | Simple (`npm run dev`)          | Automatic via Cloudflare Pages |
+| WebSocket worker | Uses deployed version           | Uses deployed version          |
 
 ## Features
 

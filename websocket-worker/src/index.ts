@@ -41,7 +41,6 @@ export default {
         status: 200,
         headers: { 'Content-Type': 'text/plain' }
       });
-
     } catch (error) {
       console.error('Worker error:', error);
       return new Response('Internal Server Error', {

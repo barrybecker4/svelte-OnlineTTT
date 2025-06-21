@@ -23,9 +23,9 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       board: game.board,
       status: game.status,
       player1: game.player1.name,
-      player1Id: game.player1.id,  // Include player1 ID
+      player1Id: game.player1.id, // Include player1 ID
       player2: game.player2?.name || null,
-      player2Id: game.player2?.id || null,  // Include player2 ID
+      player2Id: game.player2?.id || null, // Include player2 ID
       nextPlayer,
       lastPlayer: game.lastPlayer,
       lastMoveAt: game.lastMoveAt

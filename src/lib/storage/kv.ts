@@ -50,8 +50,8 @@ export class KVStorage {
   async list(prefix?: string): Promise<KVNamespaceListResult<unknown, string>> {
     if (this.useMock) {
       const keys = Array.from(mockStorage.keys())
-        .filter((key) => !prefix || key.startsWith(prefix))
-        .map((name) => ({ name }));
+        .filter(key => !prefix || key.startsWith(prefix))
+        .map(name => ({ name }));
       return { keys, list_complete: true, cursor: '' };
     }
 

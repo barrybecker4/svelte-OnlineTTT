@@ -38,7 +38,9 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
       // Send WebSocket notification to inform other player about the quit/timeout
       if (platform?.env.WEBSOCKET_HIBERNATION_SERVER) {
         try {
-          console.log(`🚨 Sending WebSocket notification for player quit/timeout - game: ${gameId}, player: ${playerSymbol}, reason: ${reason}`);
+          console.log(
+            `🚨 Sending WebSocket notification for player quit/timeout - game: ${gameId}, player: ${playerSymbol}, reason: ${reason}`
+          );
           await notifyGameUpdate(updatedGame.gameId, updatedGame, platform.env.WEBSOCKET_HIBERNATION_SERVER);
           console.log('✅ WebSocket notification sent successfully for quit/timeout');
         } catch (error) {

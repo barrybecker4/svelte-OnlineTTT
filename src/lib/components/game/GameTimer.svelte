@@ -80,20 +80,13 @@
 </script>
 
 {#if timeRemaining !== null && isMyTurn}
-  <div 
-    class="game-timer"
-    class:warning={timeRemaining <= 5}
-    class:critical={timeRemaining <= 3}
-  >
+  <div class="game-timer" class:warning={timeRemaining <= 5} class:critical={timeRemaining <= 3}>
     <div class="timer-display">
       <span class="time">{timeRemaining}</span>
       <span class="label">seconds</span>
     </div>
     <div class="timer-bar">
-      <div 
-        class="timer-fill" 
-        style="width: {(timeRemaining / timerDuration) * 100}%"
-      ></div>
+      <div class="timer-fill" style="width: {(timeRemaining / timerDuration) * 100}%"></div>
     </div>
   </div>
 {/if}
@@ -123,8 +116,13 @@
   }
 
   @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
   }
 
   .timer-display {

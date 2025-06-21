@@ -66,7 +66,7 @@ export class GameStorage {
     // Filter out stale entries and return only pending games
     const now = Date.now();
     const recentGames = openGamesList.games.filter(
-      (game) => game.status === 'PENDING' && now - game.createdAt < 300000 // 5 minutes
+      game => game.status === 'PENDING' && now - game.createdAt < 300000 // 5 minutes
     );
 
     // Update the list if we filtered anything out
@@ -97,7 +97,7 @@ export class GameStorage {
     };
 
     // Remove this game from the list first
-    openGamesList.games = openGamesList.games.filter((g) => g.gameId !== game.gameId);
+    openGamesList.games = openGamesList.games.filter(g => g.gameId !== game.gameId);
 
     // Add it back if it's still pending
     if (game.status === 'PENDING') {
@@ -115,7 +115,7 @@ export class GameStorage {
     const openGamesList = await this.kv.get<OpenGamesList>(KEYS.OPEN_GAMES);
     if (!openGamesList) return;
 
-    openGamesList.games = openGamesList.games.filter((g) => g.gameId !== gameId);
+    openGamesList.games = openGamesList.games.filter(g => g.gameId !== gameId);
     openGamesList.lastUpdated = Date.now();
 
     await this.kv.put(KEYS.OPEN_GAMES, openGamesList);

@@ -99,7 +99,7 @@ export class GameWebSocketClient {
           resolve();
         };
 
-        this.ws.onmessage = (event) => {
+        this.ws.onmessage = event => {
           try {
             const message: GameMessage = JSON.parse(event.data);
             this.handleMessage(message);
@@ -108,7 +108,7 @@ export class GameWebSocketClient {
           }
         };
 
-        this.ws.onclose = (event) => {
+        this.ws.onclose = event => {
           console.log('WebSocket closed:', event.code, event.reason);
           this.isConnecting = false;
           this.stopPing();
@@ -127,13 +127,12 @@ export class GameWebSocketClient {
           }
         };
 
-        this.ws.onerror = (error) => {
+        this.ws.onerror = error => {
           console.error('WebSocket error:', error);
           this.isConnecting = false;
           this.connectionPromise = null;
           reject(error);
         };
-
       } catch (error) {
         console.error('Failed to create WebSocket connection:', error);
         this.isConnecting = false;
@@ -195,20 +194,22 @@ export class GameWebSocketClient {
     }
 
     // Connect with the specific gameId and then subscribe
-    this.connect(gameId).then(() => {
-      if (this.isConnected()) {
-        console.log('Subscribing to game:', gameId, 'as player:', playerId);
-        this.send({
-          type: 'subscribe',
-          gameId,
-          playerId
-        });
-      } else {
-        console.warn('Cannot subscribe: WebSocket not connected');
-      }
-    }).catch(error => {
-      console.error('Failed to connect for subscription:', error);
-    });
+    this.connect(gameId)
+      .then(() => {
+        if (this.isConnected()) {
+          console.log('Subscribing to game:', gameId, 'as player:', playerId);
+          this.send({
+            type: 'subscribe',
+            gameId,
+            playerId
+          });
+        } else {
+          console.warn('Cannot subscribe: WebSocket not connected');
+        }
+      })
+      .catch(error => {
+        console.error('Failed to connect for subscription:', error);
+      });
   }
 
   unsubscribeFromGame(gameId: string): void {
