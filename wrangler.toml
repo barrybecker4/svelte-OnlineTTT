@@ -12,18 +12,13 @@ kv_namespaces = [
 ]
 
 # Add services to preview environment (using production WebSocket worker)
-[[env.preview.durable_objects]]
-binding = "WEBSOCKET_HIBERNATION_SERVER"
-name = "WebSocketHibernationServer"
-script_name = "svelte-ttt-websocket"
+[env.preview.durable_objects]
+WEBSOCKET_HIBERNATION_SERVER = { class_name = "WebSocketHibernationServer", script_name = "svelte-ttt-websocket" }
 
 [env.production]
 kv_namespaces = [
     { binding = "TTT_GAME_KV", id = "da8a29a1985a49de9be56c5d41188229" }
 ]
 
-# FIXED: Change from services to durable_objects
-[[env.production.durable_objects]]
-binding = "WEBSOCKET_HIBERNATION_SERVER"
-name = "WebSocketHibernationServer"
-script_name = "svelte-ttt-websocket"
+[env.production.durable_objects]
+WEBSOCKET_HIBERNATION_SERVER = { class_name = "WebSocketHibernationServer", script_name = "svelte-ttt-websocket" }
