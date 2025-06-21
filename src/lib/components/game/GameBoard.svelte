@@ -69,9 +69,18 @@
     font-weight: bold;
     cursor: pointer;
     transition: all 0.2s ease;
+    width: 100%;
+    height: 100%;
+    min-height: 90px;  /* Prevent shrinking */
+    min-width: 90px;   /* Prevent shrinking */
+
+    /* Fix: Use flexbox for perfect centering without affecting cell size */
     display: flex;
     align-items: center;
     justify-content: center;
+
+    /* Fix: Prevent text from affecting cell size */
+    box-sizing: border-box;
   }
 
   .cell:hover:not(.disabled):not(.occupied) {
@@ -105,6 +114,16 @@
     animation: winning-pulse 1s ease-in-out infinite alternate;
   }
 
+  .symbol {
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+
+    /* Ensure symbol stays centered and doesn't grow */
+    flex-shrink: 0;
+    display: block;
+  }
+
   .symbol.x {
     color: #ff4444;
   }
@@ -130,6 +149,8 @@
 
     .cell {
       font-size: 36px;
+      min-height: 75px;  /* Adjust for mobile */
+      min-width: 75px;   /* Adjust for mobile */
     }
   }
 </style>
