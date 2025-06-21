@@ -7,7 +7,7 @@
   import PlayerHistory from '$lib/components/game/PlayerHistory.svelte';
   import GameTimer from '$lib/components/game/GameTimer.svelte';
   import GamePoller from '$lib/components/game/GamePoller.svelte';
-  import type { GameState, GameHistory } from '$lib/types/game.ts';
+  import type { GameState, GameHistory, PlayerSymbol } from '$lib/types/game.ts';
   import { getWebSocketClient } from '$lib/websocket/client.ts';
   import { gameAudio } from '$lib/audio/Audio';
 
@@ -19,6 +19,29 @@
   let isMyTurn: boolean = false;
   let wsClient: any = null;
   let wsWorking: boolean = false;
+
+  interface GameCreationResponse {
+  gameId: string;
+  playerId: string;
+  webSocketNotificationsEnabled: boolean;
+  player1: string;
+  player2: string | null;
+  playerSymbol: 'X' | 'O';
+  status: string;
+}
+
+interface GameStateResponse {
+  gameId: string;
+  board: string;
+  status: string;
+  player1: string;
+  player1Id: string;
+  player2: string | null;
+  player2Id: string | null;
+  nextPlayer: 'X' | 'O' | null;
+  lastPlayer: string;
+  lastMoveAt: number;
+}
 
   // Game lifecycle
   onMount(() => {
@@ -53,16 +76,16 @@
   async function createNewGame() {
     try {
       const response = await fetch('/api/game/new', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerName })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerName })
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to create game: ${response.statusText}`);
+      throw new Error(`Failed to create game: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as GameCreationResponse;
       console.log('Game creation response:', data);
       wsWorking = data.webSocketNotificationsEnabled || false;
       console.log('WebSocket notifications enabled:', wsWorking);
@@ -129,96 +152,95 @@
 
   // Improved loadGameState function with better error handling
   async function loadGameState(gameId: string) {
-    if (!gameId) {
-      throw new Error('Cannot load game state without gameId');
-    }
-
-    try {
-      const response = await fetch(`/api/game/${gameId}`);
-      if (!response.ok) {
-        throw new Error(`Failed to load game: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      // Validate the response data
-      if (!data.gameId) {
-        throw new Error('Invalid game data: missing gameId');
-      }
-
-      // If we don't have a playerId yet, try to determine it based on our player name
-      if (!playerId && data.player1 === playerName) {
-        playerId = data.player1Id;
-        console.log('Set playerId to player1 ID:', playerId);
-      } else if (!playerId && data.player2 === playerName) {
-        playerId = data.player2Id;
-        console.log('Set playerId to player2 ID:', playerId);
-      }
-
-      const wasMyTurn = isMyTurn;
-      const previousBoard = gameState?.board;
-
-      // Create the GameState object with correct player IDs from the server
-      gameState = {
-        gameId: data.gameId,
-        board: data.board,
-        status: data.status,
-        player1: {
-          id: data.player1Id,
-          symbol: 'X',
-          name: data.player1
-        },
-        player2: data.player2
-          ? {
-              id: data.player2Id,
-              symbol: 'O',
-              name: data.player2
-            }
-          : undefined,
-        lastPlayer: data.lastPlayer || '',
-        createdAt: Date.now(),
-        lastMoveAt: data.lastMoveAt,
-        winner: data.winner || null
-      };
-
-      if (wasMyTurn !== isMyTurn) {
-        console.log(
-          'Turn changed - My symbol:',
-          mySymbol,
-          'Next player:',
-          data.nextPlayer || gameState.lastPlayer === '' ? 'X' : gameState.lastPlayer === 'X' ? 'O' : 'X',
-          'Is my turn:',
-          isMyTurn
-        );
-      }
-
-      if (previousBoard && previousBoard !== gameState.board) {
-        console.log('Board updated from:', previousBoard, 'to:', gameState.board);
-      }
-
-      const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
-
-      // For PENDING games, only player 1 (X) should be "ready" but not actively playing
-      if (data.status === 'PENDING') {
-        isMyTurn = false; // No moves can be made in PENDING state
-        console.log('Game is PENDING - waiting for second player');
-      } else {
-        isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
-        console.log('Turn setup - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
-      }
-
-      // Note: Timer start/stop is now handled by GameTimer component via isMyTurn prop
-
-      const gameOver = data.status !== 'ACTIVE' && data.status !== 'PENDING';
-      if (gameOver) {
-        const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
-        playGameOverSound(data.status, mySymbol);
-      }
-    } catch (error) {
-      console.error('Error loading game state:', error);
-      throw error; // Re-throw to be handled by caller
-    }
+  if (!gameId) {
+    throw new Error('Cannot load game state without gameId');
   }
+
+  try {
+    const response = await fetch(`/api/game/${gameId}`);
+    if (!response.ok) {
+      throw new Error(`Failed to load game: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json() as GameStateResponse;
+
+    // Validate the response data
+    if (!data.gameId) {
+      throw new Error('Invalid game data: missing gameId');
+    }
+
+    // If we don't have a playerId yet, try to determine it based on our player name
+    if (!playerId && data.player1 === playerName) {
+      playerId = data.player1Id;
+      console.log('Set playerId to player1 ID:', playerId);
+    } else if (!playerId && data.player2 === playerName) {
+      playerId = data.player2Id;
+      console.log('Set playerId to player2 ID:', playerId);
+    }
+
+    const wasMyTurn = isMyTurn;
+    const previousBoard = gameState?.board;
+
+    // Create the GameState object with correct player IDs from the server
+    gameState = {
+      gameId: data.gameId,
+      board: data.board,
+      status: data.status as GameStatus,
+      player1: {
+        id: data.player1Id,
+        symbol: 'X',
+        name: data.player1
+      },
+      player2: data.player2 ? {
+        id: data.player2Id!,
+        symbol: 'O',
+        name: data.player2
+      } : undefined,
+      lastPlayer: data.lastPlayer as PlayerSymbol | '',
+      createdAt: Date.now(),
+      lastMoveAt: data.lastMoveAt
+      // Remove winner property - it doesn't exist in GameState
+    };
+
+    // IMPORTANT: Declare mySymbol here, before it's used
+    const mySymbol = gameState!.player1.id === playerId ? 'X' : 'O';
+
+    if (wasMyTurn !== isMyTurn) {
+      console.log(
+        'Turn changed - My symbol:',
+        mySymbol,
+        'Next player:',
+        data.nextPlayer || (gameState!.lastPlayer === '' ? 'X' : (gameState!.lastPlayer === 'X' ? 'O' : 'X')),
+        'Is my turn:',
+        isMyTurn
+      );
+    }
+
+    if (previousBoard && previousBoard !== gameState!.board) {
+      console.log('Board updated from:', previousBoard, 'to:', gameState!.board);
+    }
+
+    // For PENDING games, only player 1 (X) should be "ready" but not actively playing
+    if (data.status === 'PENDING') {
+      isMyTurn = false; // No moves can be made in PENDING state
+      console.log('Game is PENDING - waiting for second player');
+    } else {
+      isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
+      console.log('Turn setup - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
+    }
+
+    // Note: Timer start/stop is now handled by GameTimer component via isMyTurn prop
+
+    const gameOver = data.status !== 'ACTIVE' && data.status !== 'PENDING';
+    if (gameOver) {
+      playGameOverSound(data.status, mySymbol);
+    }
+
+  } catch (error) {
+    console.error('Error loading game state:', error);
+    throw error; // Re-throw to be handled by caller
+  }
+}
 
   async function makeMove(position: number) {
     if (!gameState || !isMyTurn || gameState.status !== 'ACTIVE') {
@@ -335,15 +357,16 @@
     }
   }
 
+
   function playGameOverSound(status: string, mySymbol: 'X' | 'O') {
     if (status === 'TIE') {
-      gameAudio.playTieSound();
+      gameAudio.playGameTie();
     } else if (status.endsWith('_WIN')) {
       playWonOrLostSound(status, mySymbol);
     }
   }
 
-  function playWonOrLostSound(status: string, mySymbol) {
+  function playWonOrLostSound(status: string, mySymbol: 'X' | 'O') {
     const winnerSymbol = status.startsWith('X') ? 'X' : 'O';
     if (winnerSymbol === mySymbol) {
       gameAudio.playGameWon();
@@ -351,6 +374,7 @@
       gameAudio.playGameLost();
     }
   }
+
 
   function handlePlayerJoined(data: any) {
     if (!gameState) return;
@@ -465,7 +489,7 @@
 
   {#if gameHistory}
     <PlayerHistory
-      {gameHistory}
+      history={gameHistory}
       currentPlayerName={playerName}
       opponentName={gameState?.player1.id === playerId ? gameState.player2?.name || null : gameState?.player1.name}
     />
