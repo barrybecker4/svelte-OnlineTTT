@@ -52,7 +52,7 @@ export class KVStorage {
       const keys = Array.from(mockStorage.keys())
         .filter(key => !prefix || key.startsWith(prefix))
         .map(name => ({ name }));
-      return { keys, list_complete: true, cursor: '' };
+      return { keys, list_complete: true, cacheStatus: null };
     }
 
     return await this.kv!.list({ prefix });

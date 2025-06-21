@@ -45,6 +45,12 @@ export interface GameHistory {
   player2AsX: PlayerStats;
 }
 
+export interface GameHistoryEntry {
+  gameId: string;
+  status: GameStatus;
+  completedAt: number;
+}
+
 export interface PlayerStats {
   totalWins: number;
   totalLosses: number;
