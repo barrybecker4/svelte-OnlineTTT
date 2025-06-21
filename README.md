@@ -70,7 +70,7 @@ npm run dev
 - Frontend runs locally via SvelteKit dev server
 - Connects to your deployed WebSocket worker for real-time features
 - Uses polling fallback for local development (where WebSocket notifications don't work)
-- In production, WebSocket notifications work instantly without polling
+- In preview and production, WebSocket notifications work instantly without polling
 
 ### 5. Test the Game
 
@@ -81,9 +81,11 @@ npm run dev
 To run the unit tests, use `npm run test:unit`. 
 To run e2e tests, use `npm run test:e2e`.
 
-### 6. Production Deployment
+### 6. Cloudflare Deployment
 
-Deploy your main SvelteKit app to Cloudflare Pages:
+There are two ways to do it. The preferred way is to just integrate [github with Cloudflare](https://developers.cloudflare.com/pages/configuration/git-integration/github-integration/). Then, any commit to a branch will automatically deploy to preview, and any commit to master, will deploy to production.
+
+Alternatively, manually deploy your main SvelteKit app to Cloudflare Pages with these commands:
 
 ```bash
 npm run build
@@ -201,14 +203,6 @@ kv_namespaces = [
 - ✅ Mobile-friendly interface
 - ✅ Simple local development setup
 - ✅ Production-ready WebSocket notifications
-
-## Technology Stack
-
-- **Frontend**: SvelteKit, TypeScript, Tailwind CSS
-- **Backend**: Cloudflare Workers, Durable Objects, KV Storage
-- **Real-time**: WebSocket Hibernation API
-- **Development**: Vite dev server + deployed WebSocket worker
-- **Deployment**: Cloudflare Pages + Workers
 
 ## Contributing
 
