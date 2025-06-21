@@ -6,18 +6,24 @@ pages_build_output_dir = "dist"
 # Add nodejs compatibility for SvelteKit
 compatibility_flags = ["nodejs_compat"]
 
-# Add this section for local development
-[[services]]
-binding = "WEBSOCKET_HIBERNATION_SERVER"
-service = "svelte-ttt-websocket"
-
-
 [env.preview]
 kv_namespaces = [
     { binding = "TTT_GAME_KV", id = "2ed8441b10cd4ca59cfeaa3081b4b7d1" }
 ]
 
+# Add services to preview environment (using production WebSocket worker)
+[[env.preview.services]]
+binding = "WEBSOCKET_HIBERNATION_SERVER"
+service = "svelte-ttt-websocket"
+environment = "production"
+
 [env.production]
 kv_namespaces = [
     { binding = "TTT_GAME_KV", id = "da8a29a1985a49de9be56c5d41188229" }
 ]
+
+# Add services to production environment
+[[env.production.services]]
+binding = "WEBSOCKET_HIBERNATION_SERVER"
+service = "svelte-ttt-websocket"
+environment = "production"

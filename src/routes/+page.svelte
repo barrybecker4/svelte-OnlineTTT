@@ -429,21 +429,9 @@
     text-align: center;
   }
 
-  .welcome {
-    margin: 2rem 0;
-    padding: 2rem;
-    background: #f8f9fa;
-    border-radius: 8px;
-    color: #495057;
-  }
-
   @media (max-width: 768px) {
     .container {
       padding: 10px;
-    }
-
-    header h1 {
-      font-size: 2rem;
     }
   }
 </style>
