@@ -44,7 +44,7 @@
   }
 
   function getOtherPlayerName(): string {
-    return getPlayerName(getOtherPlayer(currentPlayer));
+    return getPlayerName(getOtherPlayer());
   }
 
   function getOtherPlayer() {

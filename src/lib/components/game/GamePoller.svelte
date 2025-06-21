@@ -9,7 +9,7 @@
   export let pollingInterval: number = 2000; // milliseconds
 
   // State
-  let devPollingInterval: number | null = null;
+  let devPollingInterval: ReturnType<typeof setInterval> | null = null;
   let isPolling: boolean = false;
 
   // Reactive: start/stop polling based on props

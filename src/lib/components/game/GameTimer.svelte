@@ -9,7 +9,7 @@
 
   // State
   let timeRemaining: number | null = null;
-  let gameTimer: number | null = null;
+  let gameTimer: ReturnType<typeof setInterval> | null = null;
   let currentTurnStartTime: number | null = null;
 
   // Reactive: start/stop timer based on turn changes
