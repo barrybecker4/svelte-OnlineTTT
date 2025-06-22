@@ -182,13 +182,16 @@ export class WebSocketHibernationServer implements DurableObject {
     console.log(`Session ${sessionId} unsubscribed from game ${gameId}`);
   }
 
-  private handleDisconnect(sessionId: string) {
+  private async handleDisconnect(sessionId: string) {
+    // Get session data before cleanup
+    const gameId = await this.state.storage.get(`session:${sessionId}:gameId`);
+    const playerId = await this.state.storage.get(`session:${sessionId}:playerId`);
+  
+    // Existing cleanup code
     this.sessions.delete(sessionId);
-
-    // Clean up session storage
     this.state.storage.delete(`session:${sessionId}:playerId`);
     this.state.storage.delete(`session:${sessionId}:gameId`);
-
+  
     // Remove from all game subscriptions
     for (const [gameId, subscribers] of this.gameSubscriptions) {
       if (subscribers.has(sessionId)) {
@@ -198,8 +201,37 @@ export class WebSocketHibernationServer implements DurableObject {
         }
       }
     }
-
+  
+    // If player was in an active game, terminate it
+    if (gameId && playerId) {
+      await this.terminateGameForDisconnect(gameId, playerId);
+    }
+  
     console.log(`Session ${sessionId} disconnected`);
+  }
+
+  private async terminateGameForDisconnect(gameId: string, playerId: string) {
+    try {
+      // Make HTTP request to quit endpoint
+      const response = await fetch(`http://localhost:8787/api/game/${gameId}/quit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playerId: playerId,
+          reason: 'RESIGN'
+        })
+      });
+  
+      if (response.ok) {
+        console.log(`✅ Game ${gameId} terminated due to player disconnect`);
+      } else {
+        console.error(`❌ Failed to terminate game for disconnect:`, await response.text());
+      }
+    } catch (error) {
+      console.error(`❌ Error terminating game for disconnect:`, error);
+    }
   }
 
   private async broadcastToGame(gameId: string, message: GameMessage): Promise<void> {

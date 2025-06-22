@@ -92,6 +92,18 @@
       </div>
     </div>
   {/if}
+    {#if status.endsWith('_BY_RESIGN')}
+    {@const winningPlayer = status.charAt(0)}
+    {@const losingPlayer = winningPlayer === 'X' ? 'O' : 'X'}
+    {@const losingPlayerName = losingPlayer === 'X' ? player1Name : player2Name}
+    
+    <div class="game-status">
+        <div class="text-green-600 font-bold text-lg">🎉 You Win!</div>
+        <div class="text-gray-600">
+          {losingPlayerName} left the game
+        </div>
+    </div>
+  {/if}
 </div>
 
 <style>

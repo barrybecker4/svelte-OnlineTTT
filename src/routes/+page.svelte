@@ -7,6 +7,7 @@
   import PlayerHistory from '$lib/components/game/PlayerHistory.svelte';
   import GameTimer from '$lib/components/game/GameTimer.svelte';
   import GamePoller from '$lib/components/game/GamePoller.svelte';
+  import ConnectionStatus from '$lib/components/ConnectionStatus.svelte';
   import type { GameState, GameHistory } from '$lib/types/game.ts';
   import { getWebSocketClient } from '$lib/websocket/client.ts';
   import { GameMatchingService } from '$lib/game/matching';
@@ -106,6 +107,25 @@
     }
     // Note: GameTimer and GamePoller components will handle their own cleanup
   });
+
+  if (typeof window !== 'undefined') {
+    const handleBeforeUnload = () => {
+      if (gameState && playerId && (gameState.status === 'ACTIVE' || gameState.status === 'PENDING')) {
+        // Send quit request when user closes tab
+        navigator.sendBeacon(`/api/game/${gameState.gameId}/quit`, JSON.stringify({
+          playerId: playerId,
+          reason: 'RESIGN'
+        }));
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Cleanup
+    onDestroy(() => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    });
+  }
 
   async function connectToWebSocket(gameId: string, playerId: string) {
     if (!gameId) {
@@ -400,6 +420,7 @@
       />
 
       <GameTimer {isMyTurn} onTimeout={() => endGame('TIMEOUT')} timerDuration={10} />
+      <ConnectionStatus {wsClient} />
     </div>
   {/if}
 
