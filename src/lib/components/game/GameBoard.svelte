@@ -4,7 +4,7 @@
   export let board: string = '_________'; // 9-character string
   export let winningPositions: number[] | null = null;
   export let disabled: boolean = false;
-  export let currentPlayerSymbol: 'X' | 'O' | null = null;
+  export let currentPlayerSymbol: 'X' | 'O';
 
   const dispatch = createEventDispatcher<{
     cellClick: { position: number };

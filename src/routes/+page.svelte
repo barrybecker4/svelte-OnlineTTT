@@ -372,14 +372,8 @@
     // Note: Timer start is now handled by GameTimer component via isMyTurn prop changes
   }
 
-  // Utility functions
-  function getCurrentPlayerSymbol(): 'X' | 'O' | null {
-    if (!gameState || gameState.status !== 'ACTIVE' || !playerId) return null;
-    return gameState.player1.id === playerId ? 'X' : 'O';
-  }
-
-  function isGameActive(): boolean {
-    return gameState?.status === 'ACTIVE';
+  function getCurrentPlayerSymbol(): 'X' | 'O' {
+    return gameState!.player1.id === playerId ? 'X' : 'O';
   }
 
 </script>
@@ -408,7 +402,7 @@
 
       <GameStatus
         status={gameState.status}
-        currentPlayer={getCurrentPlayerSymbol()}
+        currentPlayerSymbol={getCurrentPlayerSymbol()}
         player1Name={gameState.player1.name}
         player2Name={gameState.player2?.name || null}
         {isMyTurn}

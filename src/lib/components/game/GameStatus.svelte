@@ -2,15 +2,15 @@
   import type { GameStatus } from '$lib/types/game.ts';
 
   export let status: GameStatus;
-  export let currentPlayer: 'X' | 'O' | null = null;
+  export let currentPlayerSymbol: 'X' | 'O';
   export let player1Name: string;
   export let player2Name: string | null = null;
   export let isMyTurn: boolean = false;
   export let timeRemaining: number | null = null;
 
-  $: statusMessage = getStatusMessage(status, currentPlayer, isMyTurn);
+  $: statusMessage = getStatusMessage(status, currentPlayerSymbol, isMyTurn);
 
-  function getStatusMessage(status: GameStatus, currentPlayer: 'X' | 'O' | null, isMyTurn: boolean): string {
+  function getStatusMessage(status: GameStatus, currentPlayer: 'X' | 'O', isMyTurn: boolean): string {
     switch (status) {
       case 'PENDING':
         return 'Waiting for opponent...';
@@ -44,7 +44,7 @@
   }
 
   function getOtherPlayer() {
-    return currentPlayer === 'X' ? 'O' : 'X';
+    return currentPlayerSymbol === 'X' ? 'O' : 'X';
   }
 
   function getPlayerName(symbol: 'X' | 'O' | null): string {
@@ -81,12 +81,12 @@
 
   {#if status === 'ACTIVE'}
     <div class="players">
-      <div class="player" class:active={currentPlayer === 'X'}>
+      <div class="player" class:active={currentPlayerSymbol === 'X'}>
         <span class="symbol x">X</span>
         <span class="name">{player1Name}</span>
       </div>
       <div class="vs">vs</div>
-      <div class="player" class:active={currentPlayer === 'O'}>
+      <div class="player" class:active={currentPlayerSymbol === 'O'}>
         <span class="symbol o">O</span>
         <span class="name">{player2Name || 'Waiting...'}</span>
       </div>
@@ -96,9 +96,10 @@
     {@const winningPlayer = status.charAt(0)}
     {@const losingPlayer = winningPlayer === 'X' ? 'O' : 'X'}
     {@const losingPlayerName = losingPlayer === 'X' ? player1Name : player2Name}
+    {@const message = currentPlayerSymbol == winningPlayer ? '🎉 You Win!' : '😞 You Lose!'}
     
     <div class="game-status">
-        <div class="text-green-600 font-bold text-lg">🎉 You Win!</div>
+        <div class="text-green-600 font-bold text-lg">{message}</div>
         <div class="text-gray-600">
           {losingPlayerName} left the game
         </div>
