@@ -11,7 +11,6 @@
   import { getWebSocketClient } from '$lib/websocket/client.ts';
   import { gameAudio } from '$lib/audio/Audio';
 
-  // Game state
   let gameState: GameState | null = null;
   let gameHistory: GameHistory | null = null;
   let playerName: string = '';
@@ -20,7 +19,7 @@
   let wsClient: any = null;
   let wsWorking: boolean = false;
 
-  interface GameCreationResponse {
+interface GameCreationResponse {
   gameId: string;
   playerId: string;
   webSocketNotificationsEnabled: boolean;
@@ -43,21 +42,23 @@ interface GameStateResponse {
   lastMoveAt: number;
 }
 
-  // Game lifecycle
   onMount(() => {
     if (browser) {
-      // Get or create player name
-      playerName = localStorage.getItem('ttt-player-name') || '';
-      if (!playerName) {
-        playerName = prompt('Enter your name:') || `Player${Math.floor(Math.random() * 1000)}`;
-        localStorage.setItem('ttt-player-name', playerName);
-      }
-
+      playerName = getPlayerName();
       // Initialize WebSocket client but don't connect yet
       wsClient = getWebSocketClient();
       setupWebSocketCallbacks();
     }
   });
+
+  function getPlayerName(): string {
+    let playerName = localStorage.getItem('ttt-player-name') || '';
+    if (!playerName) {
+        playerName = prompt('Enter your name:') || `Player${Math.floor(Math.random() * 1000)}`;
+        localStorage.setItem('ttt-player-name', playerName);
+    }
+    return playerName;
+  }
 
   function setupWebSocketCallbacks() {
     wsClient.onGameUpdate((data: any) => {
@@ -104,29 +105,7 @@ interface GameStateResponse {
       if (wsClient && gameState) {
         console.log('Attempting WebSocket connection for game:', gameState.gameId);
         try {
-          // Validate that we have all required data before connecting
-          if (!gameState.gameId) {
-            console.error('Cannot connect to WebSocket: missing gameId');
-            return;
-          }
-
-          if (!playerId) {
-            console.error('Cannot connect to WebSocket: missing playerId');
-            return;
-          }
-
-          // Connect to WebSocket with proper error handling
-          await wsClient.connect(gameState.gameId);
-
-          // Wait a moment for the connection to establish
-          const connected = await wsClient.waitForConnection(3000);
-
-          if (connected) {
-            console.log('✅ WebSocket connected successfully! Subscribing to updates...');
-            wsClient.subscribeToGame(gameState.gameId, playerId);
-          } else {
-            console.warn('❌ WebSocket connection timeout - falling back to polling');
-          }
+          connectToWebSocket(gameState.gameId, playerId);
         } catch (wsError) {
           console.error('WebSocket connection error:', wsError);
           console.log('Falling back to polling for game updates');
@@ -149,6 +128,32 @@ interface GameStateResponse {
     }
     // Note: GameTimer and GamePoller components will handle their own cleanup
   });
+
+  async function connectToWebSocket(gameId: string, playerId: string) {
+    // Validate that we have all required data before connecting
+    if (gameId) {
+      console.error('Cannot connect to WebSocket: missing gameId');
+      return;
+    }
+
+    if (!playerId) {
+      console.error('Cannot connect to WebSocket: missing playerId');
+      return;
+    }
+
+    // Connect to WebSocket with proper error handling
+    await wsClient.connect(gameId);
+
+    // Wait a moment for the connection to establish
+    const connected = await wsClient.waitForConnection(3000);
+
+    if (connected) {
+      console.log('✅ WebSocket connected successfully! Subscribing to updates...');
+      wsClient.subscribeToGame(gameId, playerId);
+    } else {
+      console.warn('❌ WebSocket connection timeout - falling back to polling');
+    }
+  }
 
   // Improved loadGameState function with better error handling
   async function loadGameState(gameId: string) {
@@ -448,10 +453,7 @@ interface GameStateResponse {
     </div>
   {:else}
     <div class="space-y-4">
-      <!-- GameTimer Component - replaces timer variables and functions -->
-      <GameTimer {isMyTurn} onTimeout={() => endGame('TIMEOUT')} timerDuration={10} />
 
-      <!-- GamePoller Component - only enabled when WebSocket is not connected -->
       <GamePoller
         gameId={gameState.gameId}
         gameStatus={gameState.status}
@@ -484,6 +486,8 @@ interface GameStateResponse {
         }}
         on:quitGame={() => endGame('RESIGN')}
       />
+
+      <GameTimer {isMyTurn} onTimeout={() => endGame('TIMEOUT')} timerDuration={10} />
     </div>
   {/if}
 
