@@ -101,11 +101,10 @@ interface GameStateResponse {
 
       console.log('Final gameState after loading:', gameState);
 
-      // Connect to WebSocket with the specific gameId
       if (wsClient && gameState) {
         console.log('Attempting WebSocket connection for game:', gameState.gameId);
         try {
-          connectToWebSocket(gameState.gameId, playerId);
+          await connectToWebSocket(gameState.gameId, playerId);
         } catch (wsError) {
           console.error('WebSocket connection error:', wsError);
           console.log('Falling back to polling for game updates');
@@ -130,8 +129,7 @@ interface GameStateResponse {
   });
 
   async function connectToWebSocket(gameId: string, playerId: string) {
-    // Validate that we have all required data before connecting
-    if (gameId) {
+    if (!gameId) {
       console.error('Cannot connect to WebSocket: missing gameId');
       return;
     }
