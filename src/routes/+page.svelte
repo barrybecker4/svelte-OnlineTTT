@@ -161,8 +161,8 @@
         return;
       }
       
-      const wasMyTurn = isMyTurn;
-      const previousBoard = gameState?.board;
+
+      const previousStatus = gameState?.status; // Track previous status
       gameState = newGameState;
       
       const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
@@ -175,18 +175,31 @@
                           gameState.lastPlayer === 'X' ? 'O' : 'X';
         isMyTurn = nextPlayer === mySymbol && gameState.status === 'ACTIVE';
       }
-      
-      if (wasMyTurn !== isMyTurn) {
-        console.log('🔄 Turn changed - My symbol:', mySymbol, 'Is my turn:', isMyTurn);
-      }
-      
-      if (previousBoard && previousBoard !== gameState.board) {
-        console.log('📋 Board updated from:', previousBoard, 'to:', gameState.board);
-      }
+
+      checkForGameOver(gameState, mySymbol, previousStatus);
       
     } catch (error) {
-      console.error('❌ Error updating game state:', error);
+      console.error('Failed to handle game state update:', error);
     }
+  }
+
+  function checkForGameOver(gameState: GameState, mySymbol: 'X' | 'O', previousStatus: string | undefined) {
+    const gameOver = gameState.status !== 'ACTIVE' && gameState.status !== 'PENDING';
+    const gameJustEnded = gameOver && previousStatus === 'ACTIVE' || previousStatus === undefined; 
+    
+    if (gameJustEnded) {
+      console.log('🎵 Game ended, playing audio for status:', gameState.status);
+      playGameOverSound(gameState.status, mySymbol);
+      loadGameHistory();
+    }
+
+    console.log('🔄 Polling update:', {
+      status: gameState.status,
+      previousStatus,
+      mySymbol,
+      isMyTurn,
+      gameJustEnded
+    });
   }
 
 
@@ -309,7 +322,7 @@
   function playGameOverSound(status: string, mySymbol: 'X' | 'O') {
     if (status === 'TIE') {
       gameAudio.playGameTie();
-    } else if (status.endsWith('_WIN')) {
+    } else if (status.endsWith('_WIN') || status.endsWith('_BY_RESIGN') || status.endsWith('_BY_TIMEOUT')) {
       playWonOrLostSound(status, mySymbol);
     }
   }
