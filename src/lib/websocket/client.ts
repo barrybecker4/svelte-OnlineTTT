@@ -16,7 +16,7 @@ export class GameWebSocketClient {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
-  private pingInterval: number | null = null;
+  private pingInterval: ReturnType<typeof setInterval> | null = null;
   private isConnecting = false;
   private currentGameId: string | null = null;
   private connectionPromise: Promise<void> | null = null;

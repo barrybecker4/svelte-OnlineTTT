@@ -7,7 +7,7 @@
   import PlayerHistory from '$lib/components/game/PlayerHistory.svelte';
   import GameTimer from '$lib/components/game/GameTimer.svelte';
   import GamePoller from '$lib/components/game/GamePoller.svelte';
-  import type { GameState, GameHistory, PlayerSymbol } from '$lib/types/game.ts';
+  import type { GameStatus as GameStatusType,GameState, GameHistory, PlayerSymbol } from '$lib/types/game.ts';
   import { getWebSocketClient } from '$lib/websocket/client.ts';
   import { gameAudio } from '$lib/audio/Audio';
 
@@ -174,7 +174,7 @@ interface GameStateResponse {
       playerId = data.player1Id;
       console.log('Set playerId to player1 ID:', playerId);
     } else if (!playerId && data.player2 === playerName) {
-      playerId = data.player2Id;
+      playerId = data.player2Id!;
       console.log('Set playerId to player2 ID:', playerId);
     }
 
@@ -185,7 +185,7 @@ interface GameStateResponse {
     gameState = {
       gameId: data.gameId,
       board: data.board,
-      status: data.status as GameStatus,
+      status: data.status as GameStatusType,
       player1: {
         id: data.player1Id,
         symbol: 'X',

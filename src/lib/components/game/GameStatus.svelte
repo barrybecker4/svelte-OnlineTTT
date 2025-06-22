@@ -39,10 +39,6 @@
     }
   }
 
-  function getCurrentPlayerName(): string {
-    return getPlayerName(currentPlayer);
-  }
-
   function getOtherPlayerName(): string {
     return getPlayerName(getOtherPlayer());
   }
