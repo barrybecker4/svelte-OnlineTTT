@@ -1,23 +1,19 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import type { GameStatus } from '$lib/types/game.ts';
 
   export let gameStatus: GameStatus;
   export let canQuit: boolean = false;
   export let isInGame: boolean = false;
-
-  const dispatch = createEventDispatcher<{
-    newGame: void;
-    quitGame: void;
-  }>();
+  export let onNewGame: () => void = () => {};
+  export let onQuitGame: () => void = () => {};
 
   function handleNewGame() {
-    dispatch('newGame');
+    onNewGame();
   }
 
   function handleQuit() {
     if (confirm('Are you sure you want to quit this game?')) {
-      dispatch('quitGame');
+      onQuitGame();
     }
   }
 

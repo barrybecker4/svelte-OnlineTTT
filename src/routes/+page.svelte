@@ -402,7 +402,7 @@
 
       <GameStatus
         status={gameState.status}
-        currentPlayerSymbol={getCurrentPlayerSymbol()}
+        currentPlayer={getCurrentPlayerSymbol()}
         player1Name={gameState.player1.name}
         player2Name={gameState.player2?.name || null}
         {isMyTurn}
@@ -413,17 +413,15 @@
         board={gameState.board}
         disabled={!isMyTurn || gameState.status !== 'ACTIVE'}
         currentPlayerSymbol={getCurrentPlayerSymbol()}
-        on:cellClick={e => makeMove(e.detail.position)}
+        onCellClick={position => makeMove(position)}
       />
 
       <GameControls
         gameStatus={gameState?.status || 'PENDING'}
         canQuit={gameState && (gameState.status === 'ACTIVE' || gameState.status === 'PENDING')}
         isInGame={gameState !== null}
-        on:newGame={() => {
-          gameState = null;
-        }}
-        on:quitGame={() => endGame('RESIGN')}
+        onNewGame={() => { gameState = null; }}
+        onQuitGame={() => endGame('RESIGN')}
       />
 
       <GameTimer {isMyTurn} onTimeout={() => endGame('TIMEOUT')} timerDuration={10} />

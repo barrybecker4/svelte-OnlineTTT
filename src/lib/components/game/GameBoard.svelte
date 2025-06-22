@@ -1,18 +1,14 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-
   export let board: string = '_________'; // 9-character string
   export let winningPositions: number[] | null = null;
   export let disabled: boolean = false;
   export let currentPlayerSymbol: 'X' | 'O';
+  export let onCellClick: (position: number) => void = () => {};
 
-  const dispatch = createEventDispatcher<{
-    cellClick: { position: number };
-  }>();
 
   function handleCellClick(position: number) {
     if (disabled || board[position] !== '_') return;
-    dispatch('cellClick', { position });
+    onCellClick(position);
   }
 
   function getCellSymbol(position: number): string {
@@ -47,6 +43,7 @@
     </button>
   {/each}
 </div>
+
 
 <style>
   .game-board {
