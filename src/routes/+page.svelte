@@ -7,45 +7,25 @@
   import PlayerHistory from '$lib/components/game/PlayerHistory.svelte';
   import GameTimer from '$lib/components/game/GameTimer.svelte';
   import GamePoller from '$lib/components/game/GamePoller.svelte';
-  import type { GameStatus as GameStatusType,GameState, GameHistory, PlayerSymbol } from '$lib/types/game.ts';
+  import type { GameState, GameHistory } from '$lib/types/game.ts';
   import { getWebSocketClient } from '$lib/websocket/client.ts';
+  import { GameMatchingService } from '$lib/game/matching';
   import { gameAudio } from '$lib/audio/Audio';
 
   let gameState: GameState | null = null;
   let gameHistory: GameHistory | null = null;
+  let gameMatchingService: GameMatchingService;
   let playerName: string = '';
   let playerId: string = '';
   let isMyTurn: boolean = false;
   let wsClient: any = null;
   let wsWorking: boolean = false;
 
-interface GameCreationResponse {
-  gameId: string;
-  playerId: string;
-  webSocketNotificationsEnabled: boolean;
-  player1: string;
-  player2: string | null;
-  playerSymbol: 'X' | 'O';
-  status: string;
-}
-
-interface GameStateResponse {
-  gameId: string;
-  board: string;
-  status: string;
-  player1: string;
-  player1Id: string;
-  player2: string | null;
-  player2Id: string | null;
-  nextPlayer: 'X' | 'O' | null;
-  lastPlayer: string;
-  lastMoveAt: number;
-}
 
   onMount(() => {
     if (browser) {
       playerName = getPlayerName();
-      // Initialize WebSocket client but don't connect yet
+      gameMatchingService = new GameMatchingService();
       wsClient = getWebSocketClient();
       setupWebSocketCallbacks();
     }
@@ -76,44 +56,43 @@ interface GameStateResponse {
 
   async function createNewGame() {
     try {
-      const response = await fetch('/api/game/new', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playerName })
-      });
-
-      if (!response.ok) {
-      throw new Error(`Failed to create game: ${response.statusText}`);
+      console.log('🎯 Starting game creation for player:', playerName);
+      
+      // Use the matching service instead of complex fetch logic
+      const result = await gameMatchingService.findOrCreateGame(playerName);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create/join game');
       }
-
-      const data = await response.json() as GameCreationResponse;
-      console.log('Game creation response:', data);
-      wsWorking = data.webSocketNotificationsEnabled || false;
-      console.log('WebSocket notifications enabled:', wsWorking);
-
-      // Set our player ID
-      playerId = data.playerId;
-      console.log('Set playerId to:', playerId);
-
-      // Load the full game state
-      console.log('Loading game state for gameId:', data.gameId);
-      await loadGameState(data.gameId);
-
-      console.log('Final gameState after loading:', gameState);
-
+      
+      console.log('✅ Game join successful:', result);
+      
+      // Set player data from the service result
+      playerId = result.playerId;
+      wsWorking = false; // Will be set to true if WebSocket works
+      
+      // Load the full game state using the service
+      gameState = await gameMatchingService.loadGameState(result.gameId);
+      
+      if (!gameState) {
+        throw new Error('Failed to load game state');
+      }
+      
+      console.log('✅ Game state loaded:', gameState);
+      
+      // Try to connect to WebSocket (existing logic)
       if (wsClient && gameState) {
-        console.log('Attempting WebSocket connection for game:', gameState.gameId);
+        console.log('🔌 Attempting WebSocket connection for game:', gameState.gameId);
         try {
           await connectToWebSocket(gameState.gameId, playerId);
         } catch (wsError) {
-          console.error('WebSocket connection error:', wsError);
-          console.log('Falling back to polling for game updates');
+          console.error('❌ WebSocket connection error:', wsError);
+          console.log('📡 Falling back to polling for game updates');
         }
-      } else {
-        console.warn('Cannot connect to WebSocket: missing wsClient or gameState');
       }
+      
     } catch (error) {
-      console.error('Error creating game:', error);
+      console.error('❌ Error creating game:', error);
       alert('Failed to create game. Please try again.');
     }
   }
@@ -153,97 +132,43 @@ interface GameStateResponse {
     }
   }
 
-  // Improved loadGameState function with better error handling
-  async function loadGameState(gameId: string) {
-  if (!gameId) {
-    throw new Error('Cannot load game state without gameId');
+  async function handleGameStateUpdate(gameId: string): Promise<void> {
+    try {
+      const newGameState = await gameMatchingService.loadGameState(gameId);
+      
+      if (!newGameState) {
+        console.error('Failed to load game state for:', gameId);
+        return;
+      }
+      
+      const wasMyTurn = isMyTurn;
+      const previousBoard = gameState?.board;
+      gameState = newGameState;
+      
+      const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
+      
+      if (gameState.status === 'PENDING') {
+        isMyTurn = false; // Can't make moves in PENDING state
+      } else {
+        // For ACTIVE games, determine turn based on lastPlayer
+        const nextPlayer = gameState.lastPlayer === '' ? 'X' : 
+                          gameState.lastPlayer === 'X' ? 'O' : 'X';
+        isMyTurn = nextPlayer === mySymbol && gameState.status === 'ACTIVE';
+      }
+      
+      if (wasMyTurn !== isMyTurn) {
+        console.log('🔄 Turn changed - My symbol:', mySymbol, 'Is my turn:', isMyTurn);
+      }
+      
+      if (previousBoard && previousBoard !== gameState.board) {
+        console.log('📋 Board updated from:', previousBoard, 'to:', gameState.board);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error updating game state:', error);
+    }
   }
 
-  try {
-    const response = await fetch(`/api/game/${gameId}`);
-    if (!response.ok) {
-      throw new Error(`Failed to load game: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json() as GameStateResponse;
-
-    // Validate the response data
-    if (!data.gameId) {
-      throw new Error('Invalid game data: missing gameId');
-    }
-
-    // If we don't have a playerId yet, try to determine it based on our player name
-    if (!playerId && data.player1 === playerName) {
-      playerId = data.player1Id;
-      console.log('Set playerId to player1 ID:', playerId);
-    } else if (!playerId && data.player2 === playerName) {
-      playerId = data.player2Id!;
-      console.log('Set playerId to player2 ID:', playerId);
-    }
-
-    const wasMyTurn = isMyTurn;
-    const previousBoard = gameState?.board;
-
-    // Create the GameState object with correct player IDs from the server
-    gameState = {
-      gameId: data.gameId,
-      board: data.board,
-      status: data.status as GameStatusType,
-      player1: {
-        id: data.player1Id,
-        symbol: 'X',
-        name: data.player1
-      },
-      player2: data.player2 ? {
-        id: data.player2Id!,
-        symbol: 'O',
-        name: data.player2
-      } : undefined,
-      lastPlayer: data.lastPlayer as PlayerSymbol | '',
-      createdAt: Date.now(),
-      lastMoveAt: data.lastMoveAt
-      // Remove winner property - it doesn't exist in GameState
-    };
-
-    // IMPORTANT: Declare mySymbol here, before it's used
-    const mySymbol = gameState!.player1.id === playerId ? 'X' : 'O';
-
-    if (wasMyTurn !== isMyTurn) {
-      console.log(
-        'Turn changed - My symbol:',
-        mySymbol,
-        'Next player:',
-        data.nextPlayer || (gameState!.lastPlayer === '' ? 'X' : (gameState!.lastPlayer === 'X' ? 'O' : 'X')),
-        'Is my turn:',
-        isMyTurn
-      );
-    }
-
-    if (previousBoard && previousBoard !== gameState!.board) {
-      console.log('Board updated from:', previousBoard, 'to:', gameState!.board);
-    }
-
-    // For PENDING games, only player 1 (X) should be "ready" but not actively playing
-    if (data.status === 'PENDING') {
-      isMyTurn = false; // No moves can be made in PENDING state
-      console.log('Game is PENDING - waiting for second player');
-    } else {
-      isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
-      console.log('Turn setup - My symbol:', mySymbol, 'Next player:', data.nextPlayer, 'Is my turn:', isMyTurn);
-    }
-
-    // Note: Timer start/stop is now handled by GameTimer component via isMyTurn prop
-
-    const gameOver = data.status !== 'ACTIVE' && data.status !== 'PENDING';
-    if (gameOver) {
-      playGameOverSound(data.status, mySymbol);
-    }
-
-  } catch (error) {
-    console.error('Error loading game state:', error);
-    throw error; // Re-throw to be handled by caller
-  }
-}
 
   async function makeMove(position: number) {
     if (!gameState || !isMyTurn || gameState.status !== 'ACTIVE') {
@@ -424,17 +349,6 @@ interface GameStateResponse {
     return gameState?.status === 'ACTIVE';
   }
 
-  function canMakeMove(): boolean {
-    const result = isGameActive() && isMyTurn;
-    console.log('canMakeMove():', {
-      isGameActive: isGameActive(),
-      isMyTurn,
-      gameStatus: gameState?.status,
-      playerId,
-      result
-    });
-    return result;
-  }
 </script>
 
 <div class="container mx-auto max-w-lg p-4">
@@ -455,7 +369,7 @@ interface GameStateResponse {
       <GamePoller
         gameId={gameState.gameId}
         gameStatus={gameState.status}
-        onGameUpdate={loadGameState}
+        onGameUpdate={handleGameStateUpdate}
         enabled={!wsWorking}
       />
 
