@@ -183,31 +183,40 @@ export class WebSocketHibernationServer implements DurableObject {
   }
 
   private async handleDisconnect(sessionId: string) {
-    // Get session data before cleanup
-    const gameId = await this.state.storage.get(`session:${sessionId}:gameId`);
-    const playerId = await this.state.storage.get(`session:${sessionId}:playerId`);
-  
-    // Existing cleanup code
     this.sessions.delete(sessionId);
-    this.state.storage.delete(`session:${sessionId}:playerId`);
-    this.state.storage.delete(`session:${sessionId}:gameId`);
   
-    // Remove from all game subscriptions
-    for (const [gameId, subscribers] of this.gameSubscriptions) {
+    try {
+      // Get stored player and game info before cleaning up
+      const playerId = await this.state.storage.get(`session:${sessionId}:playerId`);
+      const gameId = await this.state.storage.get(`session:${sessionId}:gameId`);
+  
+      this.cleanSessionStorage(sessionId);
+      this.removeFromAllGameSubscriptions(sessionId);
+      console.log(`Session ${sessionId} disconnected`);
+  
+      // Handle game termination if this was an active player
+      if (gameId && playerId) {
+        await this.terminateGameForDisconnect(gameId as string, playerId as string);
+      }
+    } catch (error) {
+      console.error(`Error handling disconnect for session ${sessionId}:`, error);
+    }
+  }
+
+  private async cleanSessionStorage(sessionId: string) {
+    await this.state.storage.delete(`session:${sessionId}:playerId`);
+    await this.state.storage.delete(`session:${sessionId}:gameId`);
+  }
+
+  private async removeFromAllGameSubscriptions(sessionId: string) {
+    for (const [currentGameId, subscribers] of this.gameSubscriptions) {
       if (subscribers.has(sessionId)) {
         subscribers.delete(sessionId);
         if (subscribers.size === 0) {
-          this.gameSubscriptions.delete(gameId);
+          this.gameSubscriptions.delete(currentGameId);
         }
       }
     }
-  
-    // If player was in an active game, terminate it
-    if (gameId && playerId) {
-      await this.terminateGameForDisconnect(gameId, playerId);
-    }
-  
-    console.log(`Session ${sessionId} disconnected`);
   }
 
   private async terminateGameForDisconnect(gameId: string, playerId: string) {
