@@ -8,10 +8,15 @@ import { validateMove, GameValidationError } from '$lib/game/validation.ts';
 import { getPlayerSymbol, getCurrentPlayer } from '$lib/game/state.ts';
 import { notifyGameUpdate } from '$lib/server/websocket.ts';
 
+interface MoveRequest {
+  playerId: string;
+  cellPosition: number;
+}
+
 export const POST: RequestHandler = async ({ params, request, platform }) => {
   try {
     const { gameId } = params;
-    const { playerId, cellPosition } = await request.json();
+    const { playerId, cellPosition } = await request.json() as MoveRequest;;
 
     const kv = new KVStorage(platform!);
     const gameStorage = new GameStorage(kv);

@@ -5,13 +5,13 @@ import { GameStorage } from '$lib/storage/games.ts';
 import { createNewGame, addPlayer2ToGame } from '$lib/game/state.ts';
 import { notifyPlayerJoined } from '$lib/server/websocket.ts';
 
-function isLocalDevelopment(platform: any): boolean {
-  return !platform?.env.WEBSOCKET_HIBERNATION_SERVER;
+interface NewGameRequest {
+  playerName: string;
 }
 
 export const POST: RequestHandler = async ({ request, platform }) => {
-  const { playerName } = await request.json();
-
+  const { playerName } = await request.json() as NewGameRequest;
+  
   if (!playerName) {
     return json({ error: 'Player name required' }, { status: 400 });
   }

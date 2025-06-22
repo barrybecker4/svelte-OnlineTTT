@@ -6,10 +6,15 @@ import { HistoryStorage } from '$lib/storage/history.ts';
 import { terminateGame, getPlayerSymbol } from '$lib/game/state.ts';
 import { notifyGameUpdate } from '$lib/server/websocket.ts';
 
+interface QuitRequest {
+  playerId: string;
+  reason?: 'RESIGN' | 'TIMEOUT';
+}
+
 export const POST: RequestHandler = async ({ params, request, platform }) => {
   try {
     const { gameId } = params;
-    const { playerId, reason = 'RESIGN' } = await request.json();
+    const { playerId, reason = 'RESIGN' } = await request.json() as QuitRequest;;
 
     const kv = new KVStorage(platform!);
     const gameStorage = new GameStorage(kv);
@@ -57,7 +62,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         board: updatedGame.board,
         lastPlayer: updatedGame.lastPlayer,
         lastMoveAt: updatedGame.lastMoveAt,
-        winner: updatedGame.winner || null,
         message: `Player ${playerSymbol} ${reason.toLowerCase()}`
       });
     }
