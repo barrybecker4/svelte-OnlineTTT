@@ -1,6 +1,7 @@
 # svelte-OnlineTTT
 
-A real-time multiplayer tic-tac-toe game built with SvelteKit and Cloudflare infrastructure. Features instant WebSocket updates, persistent game storage, and global scalability.
+A real-time multiplayer tic-tac-toe game built with SvelteKit and Cloudflare infrastructure. Features instant WebSocket updates, persistent game storage, and global scalability. 
+[Play it!](https://svelte-onlinettt.pages.dev/)
 
 ## Architecture
 
