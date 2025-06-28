@@ -215,6 +215,8 @@
       return;
     }
 
+    const originalBoard = applyOptimisticMove(gameState, position, playerId);
+    
     // Prevent duplicate moves by temporarily disabling
     const wasMyTurn = isMyTurn;
     isMyTurn = false; // This will stop the GameTimer via reactive logic
@@ -241,14 +243,25 @@
       const data = await response.json();
       console.log('Move response:', data);
 
-      // Update local game state immediately for better UX
+      // Update local game state with server response (this will overwrite optimistic update with authoritative data)
       updateGameStateFromWebSocket(data, false);
     } catch (error) {
       console.error('Error making move:', error);
-
-      // Restore turn state if move failed
+      gameState.board = originalBoard; // rollback
       isMyTurn = wasMyTurn; // This will restart the GameTimer if needed
     }
+  }
+
+  function applyOptimisticMove(gameState: GameState, position: number, playerId: string): string {
+    const symbol = gameState.player1.id === playerId ? 'X' : 'O';
+    // Store original board for rollback
+    const originalBoard = gameState.board;
+    
+    // Apply optimistic update
+    const newBoard = gameState.board.split('');
+    newBoard[position] = symbol;
+    gameState.board = newBoard.join('');
+    return originalBoard;
   }
 
   async function endGame(reason: 'RESIGN' | 'TIMEOUT') {
