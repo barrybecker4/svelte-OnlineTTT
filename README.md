@@ -93,12 +93,14 @@ npm run test
 npx playwright install
 ```
 
-**Run E2E tests:**
+**Run E2E tests:**</br>
+This is good for running in CI build.
 ```bash
 npm run test:e2e
 ```
 
-**Watch tests run in browser (recommended)**
+**Watch tests run in browser (recommended)**</br>
+Pops up browseer windows so you can see what is being tested.
 ```bash
 npx playwright test --headed
 ```

@@ -1,7 +1,3 @@
-/**
- * Game Audio Service
- * Handles all audio effects for the Tic-Tac-Toe game
- */
 class GameAudio {
   private audioContext: AudioContext | null = null;
   private volume: number = 1.0;
@@ -9,16 +5,11 @@ class GameAudio {
   /**
    * Get or create the audio context
    */
-  private getAudioContext(): AudioContext | null {
-    try {
-      if (!this.audioContext) {
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      return this.audioContext;
-    } catch (error) {
-      console.warn('Audio context not available:', error);
-      return null;
+  private getAudioContext(): AudioContext {
+    if (!this.audioContext) {
+      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
+    return this.audioContext;
   }
 
   /**
@@ -127,4 +118,3 @@ export const gameAudio = new GameAudio();
 
 // Export class for testing or advanced usage
 export { GameAudio };
- 
