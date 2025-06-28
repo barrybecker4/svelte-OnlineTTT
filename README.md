@@ -76,12 +76,40 @@ npm run dev
 
 ### 5. Test the Game
 
+#### Test manually
 1. **Create a game** - Enter your name and click "Play"
 2. **Join with second player** - Open another browser tab/window, enter different name, click "Play"
 3. **Play in real-time** - Moves appear within 2 seconds in local development, instantly in production
 
-To run the unit tests, use `npm run test:unit`.
-To run e2e tests, use `npm run test:e2e`.
+#### Run Unit Tests
+```bash
+npm run test
+```
+
+#### Run End-to-End Tests
+
+**First-time setup (one-time only):**
+```bash
+npx playwright install
+```
+
+**Run E2E tests:**
+```bash
+npm run test:e2e
+```
+
+**Watch tests run in browser (recommended)**
+```bash
+npx playwright test --headed
+```
+
+**Run specific test file**
+```bash
+npx playwright test practical-tests.test.ts --headed
+```
+
+The E2E tests will automatically start the development server, run tests against real browser instances, and shut down when complete. Tests include:
+
 
 ### 6. Cloudflare Deployment
 

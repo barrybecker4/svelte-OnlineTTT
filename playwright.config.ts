@@ -1,9 +1,25 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   webServer: {
-    command: 'npm run build && npm run preview',
-    port: 4173
+    command: 'npm run dev',
+    port: 5173,
+    reuseExistingServer: !process.env.CI,
   },
-  testDir: 'e2e'
+  testDir: 'e2e',
+  use: {
+    baseURL: 'http://localhost:5173',
+    // Uncomment these for visual debugging
+    //headless: false,
+    //slowMo: 1000,
+  },
+  // For CI environments, run headless. For local development, you can override
+  pprojects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+  ],
 });
