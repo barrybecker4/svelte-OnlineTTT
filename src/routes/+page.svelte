@@ -44,13 +44,11 @@
   function setupWebSocketCallbacks() {
     wsClient.onGameUpdate((data: any) => {
       console.log('📩 Received game update:', data);
-      wsWorking = true;
       updateGameStateFromWebSocket(data, true);
     });
 
     wsClient.onPlayerJoined((data: any) => {
       console.log('👋 Player joined notification received:', data);
-      wsWorking = true;
       handlePlayerJoined(data);
     });
   }
@@ -70,7 +68,7 @@
       
       // Set player data from the service result
       playerId = result.playerId;
-      wsWorking = false; // Will be set to true if WebSocket works
+      wsWorking = false; // set to true when webSocker verified working
       
       // Load the full game state using the service
       gameState = await gameMatchingService.loadGameState(result.gameId);
@@ -138,17 +136,28 @@
       return;
     }
 
-    // Connect to WebSocket with proper error handling
-    await wsClient.connect(gameId);
+    try {
+      // Connect to WebSocket with proper error handling
+      await wsClient.connect(gameId);
 
-    // Wait a moment for the connection to establish
-    const connected = await wsClient.waitForConnection(3000);
+      // Wait a moment for the connection to establish
+      const connected = await wsClient.waitForConnection(3000);
 
-    if (connected) {
-      console.log('✅ WebSocket connected successfully! Subscribing to updates...');
-      wsClient.subscribeToGame(gameId, playerId);
-    } else {
-      console.warn('❌ WebSocket connection timeout - falling back to polling');
+      if (connected) {
+        console.log('✅ WebSocket connected successfully! Subscribing to updates...');
+        wsClient.subscribeToGame(gameId, playerId);
+
+        // Set wsWorking to true to disable polling if not local
+        if (!isLocal()) {
+          wsWorking = true;
+          console.log('📩 WebSocket working - polling disabled');
+        }
+      } else {
+        console.warn('❌ WebSocket connection timeout - falling back to polling');
+      }
+    } catch (error) {
+      console.error('❌ WebSocket connection error:', error);
+      console.log('📡 Falling back to polling for game updates');
     }
   }
 
@@ -202,7 +211,6 @@
     });
   }
 
-
   async function makeMove(position: number) {
     if (!gameState || !isMyTurn || gameState.status !== 'ACTIVE') {
       console.log('Cannot make move - game state:', gameState?.status, 'isMyTurn:', isMyTurn);
@@ -216,7 +224,8 @@
     }
 
     const originalBoard = applyOptimisticMove(gameState, position, playerId);
-    
+    await new Promise(resolve => setTimeout(resolve, 10)); // small delay to give time to render
+
     // Prevent duplicate moves by temporarily disabling
     const wasMyTurn = isMyTurn;
     isMyTurn = false; // This will stop the GameTimer via reactive logic
@@ -254,10 +263,8 @@
 
   function applyOptimisticMove(gameState: GameState, position: number, playerId: string): string {
     const symbol = gameState.player1.id === playerId ? 'X' : 'O';
-    // Store original board for rollback
-    const originalBoard = gameState.board;
-    
-    // Apply optimistic update
+    const originalBoard = gameState.board; // store for possible rollback
+
     const newBoard = gameState.board.split('');
     newBoard[position] = symbol;
     gameState.board = newBoard.join('');
@@ -299,7 +306,7 @@
     gameState.lastMoveAt = data.lastMoveAt;
 
     if (fromWebSocket) {
-      wsWorking = true;
+      //wsWorking = true;
       console.log('📩 Real WebSocket notification - disabling polling');
     }
 
@@ -389,6 +396,11 @@
     return gameState!.player1.id === playerId ? 'X' : 'O';
   }
 
+  function isLocal() {
+    return window.location.hostname === 'localhost' ||
+           window.location.hostname === '127.0.0.1' ||
+           window.location.port === '5173';
+  }
 </script>
 
 <div class="container mx-auto max-w-lg p-4">
