@@ -4,7 +4,7 @@ import { KVStorage } from '$lib/storage/kv.ts';
 import { GameStorage } from '$lib/storage/games.ts';
 import { HistoryStorage } from '$lib/storage/history.ts';
 import { terminateGame, getPlayerSymbol } from '$lib/game/state.ts';
-import { notifyGameUpdate } from '$lib/server/websocket.ts';
+import { WebSocketNotificationService } from '$lib/server/WebSocketNotificationService.js';
 
 interface QuitRequest {
   playerId: string;
@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
           console.log(
             `🚨 Sending WebSocket notification for player quit/timeout - game: ${gameId}, player: ${playerSymbol}, reason: ${reason}`
           );
-          await notifyGameUpdate(updatedGame.gameId, updatedGame, platform.env.WEBSOCKET_HIBERNATION_SERVER);
+          await WebSocketNotificationService.notifyGameUpdate(updatedGame.gameId, updatedGame, platform.env.WEBSOCKET_HIBERNATION_SERVER);
           console.log('✅ WebSocket notification sent successfully for quit/timeout');
         } catch (error) {
           console.error('❌ Failed to send WebSocket notification for quit/timeout:', error);
