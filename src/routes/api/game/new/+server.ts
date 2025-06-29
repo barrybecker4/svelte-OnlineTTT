@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types.ts';
 import { KVStorage } from '$lib/storage/kv.ts';
 import { GameStorage } from '$lib/storage/games.ts';
 import { createNewGame, addPlayer2ToGame } from '$lib/game/state.ts';
-import { notifyPlayerJoined } from '$lib/server/websocket.ts';
+import { WebSocketNotificationService } from '$lib/server/WebSocketNotificationService.js';
 
 interface NewGameRequest {
   playerName: string;
@@ -41,7 +41,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     if (platform?.env.WEBSOCKET_HIBERNATION_SERVER) {
       try {
         console.log('🚀 PRODUCTION: Sending instant WebSocket notification...');
-        await notifyPlayerJoined(updatedGame.gameId, updatedGame, platform.env.WEBSOCKET_HIBERNATION_SERVER);
+        await WebSocketNotificationService.notifyPlayerJoined(updatedGame.gameId, updatedGame, platform.env.WEBSOCKET_HIBERNATION_SERVER);
         console.log('✅ WebSocket notification sent successfully');
       } catch (error) {
         console.error('❌ WebSocket notification failed:', error);

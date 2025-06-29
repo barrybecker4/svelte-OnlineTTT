@@ -6,7 +6,7 @@ import { HistoryStorage } from '$lib/storage/history.ts';
 import { makeMove } from '$lib/game/logic.ts';
 import { validateMove, GameValidationError } from '$lib/game/validation.ts';
 import { getPlayerSymbol, getCurrentPlayer } from '$lib/game/state.ts';
-import { notifyGameUpdate } from '$lib/server/websocket.ts';
+import { WebSocketNotificationService } from '$lib/server/WebSocketNotificationService.js';
 
 interface MoveRequest {
   playerId: string;
@@ -64,7 +64,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
     // Send WebSocket notification to all players in the game
     if (platform?.env.WEBSOCKET_HIBERNATION_SERVER) {
       try {
-        await notifyGameUpdate(updatedGame.gameId, updatedGame, platform.env.WEBSOCKET_HIBERNATION_SERVER);
+        await WebSocketNotificationService.notifyGameUpdate(updatedGame.gameId, updatedGame, platform.env.WEBSOCKET_HIBERNATION_SERVER);
       } catch (error) {
         console.error('Failed to send WebSocket notification:', error);
         // Don't fail the request if WebSocket notification fails
