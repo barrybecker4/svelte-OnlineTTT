@@ -1,4 +1,7 @@
 import type { GameState } from '../types/game.ts';
+import { buildWebSocketUrl } from './urlBuilder.js';
+import { validateConnectionAttempt } from './connectionValidator.ts';
+import { ConnectionPromise } from './ConnectionPromise.ts';
 
 export interface GameMessage {
   type: 'gameUpdate' | 'playerJoined' | 'gameEnded' | 'error' | 'subscribed' | 'pong';
@@ -19,7 +22,7 @@ export class GameWebSocketClient {
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private isConnecting = false;
   private currentGameId: string | null = null;
-  private connectionPromise: Promise<void> | null = null;
+  private connectionPromise = new ConnectionPromise();
 
   private callbacks: {
     gameUpdate?: GameUpdateCallback;
@@ -27,127 +30,117 @@ export class GameWebSocketClient {
     error?: ErrorCallback;
   } = {};
 
-  constructor(private baseUrl: string = '') {
-    if (typeof window !== 'undefined') {
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && !this.isConnected() && this.currentGameId) {
-          this.connect(this.currentGameId);
-        }
-      });
-    }
-  }
+  constructor(private baseUrl: string = '') {}
 
   async connect(gameId?: string): Promise<void> {
-    // Don't allow connections without a gameId
-    if (!gameId && !this.currentGameId) {
-      console.warn('Cannot connect to WebSocket without a gameId');
-      return;
-    }
+    const validation = validateConnectionAttempt(gameId,
+      this.currentGameId, this.isConnected(), this.isConnecting, this.connectionPromise.get()
+    );
 
-    // If already connecting or connected to the same gameId, return existing promise or resolve immediately
-    if (gameId && this.currentGameId === gameId) {
-      if (this.isConnected()) {
+    if (!validation.canConnect) {
+      if (validation.reason) {
+        console.warn(validation.reason);
+      }
+
+      if (validation.shouldUseExistingConnection) {
         return Promise.resolve();
       }
-      if (this.connectionPromise) {
-        return this.connectionPromise;
+
+      if (validation.shouldUseExistingPromise && this.connectionPromise.exists()) {
+        return this.connectionPromise.get()!;
       }
+
+      return Promise.resolve();
     }
 
-    // Store the gameId for reconnections
-    if (gameId) {
+    if (gameId) { // Store the gameId for reconnections
       this.currentGameId = gameId;
     }
 
-    // Don't start a new connection if one is already in progress for the same game
-    if (this.isConnecting) {
-      return this.connectionPromise || Promise.resolve();
+    this.isConnecting = true;
+    const promise = this.connectionPromise.create();
+
+    try {
+      const wsUrl = buildWebSocketUrl(this.currentGameId!);
+      console.log('Connecting to WebSocket:', wsUrl);
+
+      // Validate that we have a gameId in the URL
+      if (!wsUrl.includes('gameId=')) {
+        const error = new Error('Cannot connect without gameId parameter');
+        console.error(error.message);
+        this.isConnecting = false;
+        // CHANGE: Use ConnectionPromise method
+        this.connectionPromise.rejectAndClear(error);
+        return promise;
+      }
+
+      // Disconnect existing connection if any
+      if (this.ws) {
+        this.ws.close(1000, 'Reconnecting');
+        this.ws = null;
+      }
+
+      this.ws = new WebSocket(wsUrl);
+
+      this.ws.onopen = () => {
+        console.log('WebSocket connected for game:', this.currentGameId);
+        this.isConnecting = false;
+        this.reconnectAttempts = 0;
+        this.reconnectDelay = 1000;
+        this.startPing();
+        this.connectionPromise.resolveAndClear();
+      };
+
+      this.ws.onmessage = event => {
+        try {
+          const message: GameMessage = JSON.parse(event.data);
+          this.handleMessage(message);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+
+      this.ws.onclose = event => {
+        console.log('WebSocket closed:', event.code, event.reason);
+        this.isConnecting = false;
+        this.stopPing();
+        this.connectionPromise.clear();
+
+        // Only try to reconnect if it's not a service unavailable error and we have a gameId
+        if (event.code !== 1011 && event.code !== 1012 && this.currentGameId) {
+          this.scheduleReconnect();
+        } else {
+          console.log('WebSocket service unavailable or no gameId, not attempting reconnect');
+        }
+
+        // If this was an unexpected close, reject the promise if it still exists
+        if (event.code !== 1000 && this.connectionPromise.exists()) {
+          this.connectionPromise.rejectAndClear(
+            new Error(`WebSocket closed unexpectedly: ${event.code} ${event.reason}`)
+          );
+        }
+      };
+
+      this.ws.onerror = error => {
+        console.error('WebSocket error:', error);
+        this.isConnecting = false;
+        // CHANGE: Use ConnectionPromise method
+        this.connectionPromise.rejectAndClear(error as Error);
+      };
+
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error);
+      this.isConnecting = false;
+      this.connectionPromise.rejectAndClear(error as Error);
     }
 
-    this.isConnecting = true;
-
-    this.connectionPromise = new Promise<void>((resolve, reject) => {
-      try {
-        const wsUrl = this.getWebSocketUrl(this.currentGameId!);
-        console.log('Connecting to WebSocket:', wsUrl);
-
-        // Validate that we have a gameId in the URL
-        if (!wsUrl.includes('gameId=')) {
-          const error = new Error('Cannot connect without gameId parameter');
-          console.error(error.message);
-          this.isConnecting = false;
-          this.connectionPromise = null;
-          reject(error);
-          return;
-        }
-
-        // Disconnect existing connection if any
-        if (this.ws) {
-          this.ws.close(1000, 'Reconnecting');
-          this.ws = null;
-        }
-
-        this.ws = new WebSocket(wsUrl);
-
-        this.ws.onopen = () => {
-          console.log('WebSocket connected for game:', this.currentGameId);
-          this.isConnecting = false;
-          this.reconnectAttempts = 0;
-          this.reconnectDelay = 1000;
-          this.startPing();
-          this.connectionPromise = null;
-          resolve();
-        };
-
-        this.ws.onmessage = event => {
-          try {
-            const message: GameMessage = JSON.parse(event.data);
-            this.handleMessage(message);
-          } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-          }
-        };
-
-        this.ws.onclose = event => {
-          console.log('WebSocket closed:', event.code, event.reason);
-          this.isConnecting = false;
-          this.stopPing();
-          this.connectionPromise = null;
-
-          // Only try to reconnect if it's not a service unavailable error and we have a gameId
-          if (event.code !== 1011 && event.code !== 1012 && this.currentGameId) {
-            this.scheduleReconnect();
-          } else {
-            console.log('WebSocket service unavailable or no gameId, not attempting reconnect');
-          }
-
-          // If this was an unexpected close, reject the promise
-          if (event.code !== 1000 && this.connectionPromise) {
-            reject(new Error(`WebSocket closed unexpectedly: ${event.code} ${event.reason}`));
-          }
-        };
-
-        this.ws.onerror = error => {
-          console.error('WebSocket error:', error);
-          this.isConnecting = false;
-          this.connectionPromise = null;
-          reject(error);
-        };
-      } catch (error) {
-        console.error('Failed to create WebSocket connection:', error);
-        this.isConnecting = false;
-        this.connectionPromise = null;
-        reject(error);
-      }
-    });
-
-    return this.connectionPromise;
+    return promise;
   }
 
   disconnect(): void {
     this.stopPing();
-    this.currentGameId = null; // Clear gameId to prevent reconnection attempts
-    this.connectionPromise = null;
+    this.currentGameId = null;
+    this.connectionPromise.clear();
 
     if (this.ws) {
       this.ws.close(1000, 'Client disconnect');
@@ -240,29 +233,6 @@ export class GameWebSocketClient {
 
   onError(callback: ErrorCallback): void {
     this.callbacks.error = callback;
-  }
-
-  private getWebSocketUrl(gameId?: string): string {
-    if (typeof window === 'undefined') {
-      return '';
-    }
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-
-    // Always use the deployed WebSocket worker for simplicity
-    // This avoids complex local development setup issues
-    const host = 'svelte-ttt-websocket.barrybecker4.workers.dev';
-
-    // Build the WebSocket URL
-    let wsUrl = `${protocol}//${host}/websocket`;
-
-    // Add gameId as query parameter if provided
-    if (gameId) {
-      wsUrl += `?gameId=${encodeURIComponent(gameId)}`;
-    }
-
-    console.log('WebSocket URL:', wsUrl);
-    return wsUrl;
   }
 
   private send(data: any): void {
