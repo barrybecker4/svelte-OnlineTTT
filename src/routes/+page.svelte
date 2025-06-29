@@ -212,19 +212,8 @@
   }
 
   async function makeMove(position: number) {
-    if (!gameState || !isMyTurn || gameState.status !== 'ACTIVE') {
-      console.log('Cannot make move - game state:', gameState?.status, 'isMyTurn:', isMyTurn);
-      return;
-    }
-
-    // Check if this position is already taken
-    if (gameState.board[position] !== '_') {
-      console.log('Position already taken:', position);
-      return;
-    }
-
-    const originalBoard = applyOptimisticMove(gameState, position, playerId);
-    await new Promise(resolve => setTimeout(resolve, 10)); // small delay to give time to render
+    if (!valid(position)) return;
+    const originalBoard = applyOptimisticMove(position, playerId);
 
     // Prevent duplicate moves by temporarily disabling
     const wasMyTurn = isMyTurn;
@@ -261,7 +250,21 @@
     }
   }
 
-  function applyOptimisticMove(gameState: GameState, position: number, playerId: string): string {
+  function valid(position: number) {
+    if (!gameState || !isMyTurn || gameState.status !== 'ACTIVE') {
+      console.log('Cannot make move - game state:', gameState?.status, 'isMyTurn:', isMyTurn);
+      return false;
+    }
+
+    // Check if this position is already taken
+    if (gameState.board[position] !== '_') {
+      console.log('Position already taken:', position);
+      return false;
+    }
+    return true;
+  }
+
+  function applyOptimisticMove(position: number, playerId: string): string {
     const symbol = gameState.player1.id === playerId ? 'X' : 'O';
     const originalBoard = gameState.board; // store for possible rollback
 
@@ -305,11 +308,6 @@
     gameState.lastPlayer = data.lastPlayer;
     gameState.lastMoveAt = data.lastMoveAt;
 
-    if (fromWebSocket) {
-      //wsWorking = true;
-      console.log('📩 Real WebSocket notification - disabling polling');
-    }
-
     // Determine if it's my turn based on actual player ID comparison
     const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
 
@@ -320,12 +318,9 @@
     } else {
       isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
       console.log(
-        'WebSocket turn update - My symbol:',
-        mySymbol,
-        'Next player:',
-        data.nextPlayer,
-        'Is my turn:',
-        isMyTurn
+        'WebSocket turn update - My symbol:', mySymbol,
+        'Next player:', data.nextPlayer,
+        'Is my turn:', isMyTurn
       );
     }
 
