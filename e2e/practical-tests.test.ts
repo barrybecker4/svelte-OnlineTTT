@@ -142,40 +142,94 @@ test.describe('Practical Game Tests', () => {
       await context2.close();
     }
   });
-  
+
   test('Game restart functionality', async ({ browser }) => {
     test.setTimeout(15000);
-    
+
     const context1 = await browser.newContext();
     const player1Page = await context1.newPage();
-    
+
     try {
       console.log('=== Testing Game Restart ===');
-      
+
       // Create game
       await player1Page.goto('/');
       await player1Page.evaluate(() => localStorage.setItem('ttt-player-name', 'Tester'));
       await player1Page.reload();
       await player1Page.waitForTimeout(1000);
       await player1Page.click('button:has-text("Play")');
-      
+
       await expect(player1Page.locator('.game-board')).toBeVisible({ timeout: 10000 });
       console.log('✅ Game created');
-      
-      // Click New Game
-      const newGameButton = player1Page.locator('button:has-text("New Game")');
-      await expect(newGameButton).toBeVisible();
+
+      // Wait for the game state to stabilize before looking for New Game button
+      await player1Page.waitForTimeout(3000);
+
+      // Debug: Log all visible buttons before attempting to find New Game
+      const allButtons = await player1Page.locator('button').allTextContents();
+      console.log('All visible buttons:', allButtons);
+
+      // Try multiple selectors for the New Game button
+      const newGameSelectors = [
+        'button:has-text("New Game")',
+        'button[class*="btn"]:has-text("New Game")',
+        '.game-controls button:has-text("New Game")',
+        'button:text-is("New Game")'
+      ];
+
+      let newGameButton = null;
+      let selectorUsed = '';
+
+      for (const selector of newGameSelectors) {
+        const buttonCount = await player1Page.locator(selector).count();
+        if (buttonCount > 0) {
+          newGameButton = player1Page.locator(selector).first();
+          selectorUsed = selector;
+          console.log(`✅ Found New Game button with selector: ${selector}`);
+          break;
+        }
+      }
+
+      if (!newGameButton) {
+        // If we still can't find it, try waiting longer and check game state
+        console.log('❌ New Game button not found, waiting longer and debugging...');
+        await player1Page.waitForTimeout(5000);
+
+        // Debug game state
+        const gameStatusText = await player1Page.locator('.game-status').textContent();
+        console.log('Game status text:', gameStatusText);
+
+        // Try again with a more generous timeout
+        newGameButton = player1Page.locator('button:has-text("New Game")');
+        await expect(newGameButton).toBeVisible({ timeout: 10000 });
+      } else {
+        // Ensure the button is visible before clicking
+        await expect(newGameButton).toBeVisible({ timeout: 5000 });
+      }
+
+      console.log(`Clicking New Game button (found with: ${selectorUsed})`);
       await newGameButton.click();
       await player1Page.waitForTimeout(2000);
-      
-      // Verify restart worked
+
+      // Verify restart worked - should either show Play button OR still show game board
       const playButton = await player1Page.locator('button:has-text("Play")').count();
       const gameBoard = await player1Page.locator('.game-board').count();
-      
+
       console.log('After restart - Play button:', playButton, 'Game board:', gameBoard);
       expect(playButton + gameBoard).toBeGreaterThan(0);
       console.log('✅ New Game restart works');
-      
+
+    } catch (error) {
+      console.error('Test failed with error:', error);
+
+      // Additional debugging on failure
+      const allText = await player1Page.textContent('body');
+      console.log('Page content sample:', allText.substring(0, 500));
+
+      const allButtons = await player1Page.locator('button').allTextContents();
+      console.log('All buttons at failure:', allButtons);
+
+      throw error;
     } finally {
       await context1.close();
     }

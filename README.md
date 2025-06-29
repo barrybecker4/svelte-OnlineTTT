@@ -204,26 +204,8 @@ kv_namespaces = [
 ]
 ```
 
-## Troubleshooting
 
-### Common Issues
-
-**Game not updating in real-time:**
-
-- In local development: This is expected, updates happen every 2 seconds via polling
-- In production: Check WebSocket connection in browser dev tools
-
-**WebSocket connection errors:**
-
-- Verify your WebSocket worker is deployed: `curl https://svelte-ttt-websocket.YOUR_USERNAME.workers.dev/health`
-- Check browser console for connection logs
-
-**Players can't join:**
-
-- Check that KV storage is working
-- Verify game creation API calls are succeeding
-
-### Development vs Production Behavior
+## Development vs Production Behavior
 
 | Feature          | Local Development               | Production                     |
 | ---------------- | ------------------------------- | ------------------------------ |
