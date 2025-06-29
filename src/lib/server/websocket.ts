@@ -1,13 +1,7 @@
-// src/lib/server/websocket.ts - Updated with proper serialization
-
 import type { GameState } from '../types/game.ts';
+import type { GameMessage } from '../types/websocket.js';
 
-export interface GameMessage {
-  type: 'gameUpdate' | 'playerJoined' | 'gameEnded' | 'error' | 'subscribed' | 'pong';
-  gameId: string;
-  data: any;
-  timestamp: number;
-}
+
 
 // Helper function to extract only serializable data from GameState
 function serializeGameState(gameState: GameState) {

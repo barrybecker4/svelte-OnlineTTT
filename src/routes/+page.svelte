@@ -9,7 +9,7 @@
   import GamePoller from '$lib/components/game/GamePoller.svelte';
   import ConnectionStatus from '$lib/components/ConnectionStatus.svelte';
   import type { GameState, GameHistory } from '$lib/types/game.ts';
-  import { getWebSocketClient } from '$lib/websocket/client.ts';
+  import { GameWebSocketClient } from '$lib/websocket/client.ts';
   import { GameMatchingService } from '$lib/game/matching';
   import { gameAudio } from '$lib/audio/Audio';
 
@@ -27,7 +27,7 @@
     if (browser) {
       playerName = getPlayerName();
       gameMatchingService = new GameMatchingService();
-      wsClient = getWebSocketClient();
+      wsClient = new GameWebSocketClient();
       setupWebSocketCallbacks();
     }
   });
