@@ -21,21 +21,48 @@
           return `Waiting for ${getOtherPlayerName()}'s move...`;
         }
       case 'X_WIN':
-        return `${getPlayerName('X')} wins!`;
+        return getPersonalizedWinMessage('X', currentPlayer);
       case 'O_WIN':
-        return `${getPlayerName('O')} wins!`;
+        return getPersonalizedWinMessage('O', currentPlayer);
       case 'TIE':
-        return "It's a tie!";
+        return "It's a tie! 🤝";
       case 'X_BY_RESIGN':
-        return `${getPlayerName('X')} wins - ${getPlayerName('O')} resigned`;
+        return getPersonalizedResignMessage('X', currentPlayer);
       case 'O_BY_RESIGN':
-        return `${getPlayerName('O')} wins - ${getPlayerName('X')} resigned`;
+        return getPersonalizedResignMessage('O', currentPlayer);
       case 'X_BY_TIMEOUT':
-        return `${getPlayerName('X')} wins - ${getPlayerName('O')} timed out`;
+        return getPersonalizedTimeoutMessage('X', currentPlayer);
       case 'O_BY_TIMEOUT':
-        return `${getPlayerName('O')} wins - ${getPlayerName('X')} timed out`;
+        return getPersonalizedTimeoutMessage('O', currentPlayer);
       default:
         return 'Unknown game state';
+    }
+  }
+
+  function getPersonalizedWinMessage(winnerSymbol: 'X' | 'O', mySymbol: 'X' | 'O'): string {
+    if (winnerSymbol === mySymbol) {
+      return `🎉 You won!`;
+    } else {
+      const opponentName = getPlayerName(winnerSymbol);
+      return `😞 You lost! ${opponentName} won.`;
+    }
+  }
+
+  function getPersonalizedResignMessage(winnerSymbol: 'X' | 'O', mySymbol: 'X' | 'O'): string {
+    if (winnerSymbol === mySymbol) {
+      const opponentName = getPlayerName(getOtherSymbol(winnerSymbol));
+      return `🎉 You won! ${opponentName} resigned.`;
+    } else {
+      return `😞 You lost! You resigned.`;
+    }
+  }
+
+  function getPersonalizedTimeoutMessage(winnerSymbol: 'X' | 'O', mySymbol: 'X' | 'O'): string {
+    if (winnerSymbol === mySymbol) {
+      const opponentName = getPlayerName(getOtherSymbol(winnerSymbol));
+      return `🎉 You won! ${opponentName} timed out.`;
+    } else {
+      return `😞 You lost! You timed out.`;
     }
   }
 
@@ -43,8 +70,12 @@
     return getPlayerName(getOtherPlayer());
   }
 
-  function getOtherPlayer() {
+  function getOtherPlayer(): 'X' | 'O' {
     return currentPlayer === 'X' ? 'O' : 'X';
+  }
+
+  function getOtherSymbol(symbol: 'X' | 'O'): 'X' | 'O' {
+    return symbol === 'X' ? 'O' : 'X';
   }
 
   function getPlayerName(symbol: 'X' | 'O' | null): string {
@@ -92,20 +123,8 @@
       </div>
     </div>
   {/if}
-    {#if status.endsWith('_BY_RESIGN')}
-    {@const winningPlayer = status.charAt(0)}
-    {@const losingPlayer = winningPlayer === 'X' ? 'O' : 'X'}
-    {@const losingPlayerName = losingPlayer === 'X' ? player1Name : player2Name}
-    {@const message = currentPlayer == winningPlayer ? '🎉 You Win!' : '😞 You Lose!'}
-    
-    <div class="game-status">
-        <div class="text-green-600 font-bold text-lg">{message}</div>
-        <div class="text-gray-600">
-          {losingPlayerName} left the game
-        </div>
-    </div>
-  {/if}
 </div>
+
 
 <style>
   .game-status {
