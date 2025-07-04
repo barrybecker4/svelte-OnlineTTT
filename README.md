@@ -63,16 +63,13 @@ Replace `YOUR_USERNAME` with your actual Cloudflare username.
 For local development, use the simple setup:
 
 ```bash
-npm run dev
-# Visit http://localhost:5173
+cd websocket-worker
+npx wrangler dev --local --port 8787
 ```
+- Then in project root, run `npm run dev`
 
-**How it works:**
+This will connect to the local webSocket worker. It does not use Cloudflare, and it's very fast. If for some reason it does not connect (like if the worker is not rungning), it will fall back to polling every 2 seconds to check for game updates.
 
-- Frontend runs locally via SvelteKit dev server
-- Connects to your deployed WebSocket worker for real-time features
-- Uses polling fallback for local development (where WebSocket notifications don't work)
-- In preview and production, WebSocket notifications work instantly without polling
 
 ### 5. Test the Game
 
@@ -100,7 +97,7 @@ npm run test:e2e
 ```
 
 **Watch tests run in browser (recommended)**</br>
-Pops up browseer windows so you can see what is being tested.
+Pops up browser windows so you can see what is being tested.
 ```bash
 npx playwright test --headed
 ```
@@ -135,26 +132,6 @@ Your app will be available at your Cloudflare Pages URL with instant real-time u
 3. **Real-time Updates**: WebSocket connections to deployed Durable Objects
 4. **Local Development**: Polling fallback when WebSocket notifications can't be sent
 5. **Production**: Full WebSocket notifications for instant updates
-
-### Local vs Production
-
-**Local Development:**
-
-- Start local worker with 
-```bash
-cd websocket-worker
-npx wrangler dev --local --port 8787
-```
-- Then in project root, run `npm run dev` 
-
-This will connect to the local webSocket worker. It sdoes not use Cloudflare, and it's very fast. If for some reason it does not connect (like if the worker is not rungning), it will fall back to polling every 2 seconds to check for game updates.
-
-**Production:**
-
-- Full Cloudflare Pages + Workers environment
-- WebSocket notifications work instantly
-- No polling needed
-- Optimal performance
 
 ## Development Scripts
 
