@@ -7,6 +7,7 @@ interface GameJoinResult {
   playerId: string;
   playerSymbol: 'X' | 'O';
   status: 'PENDING' | 'ACTIVE';
+  webSocketNotificationsEnabled?: boolean;
   error?: string;
 }
 
@@ -32,13 +33,14 @@ export class GameMatchingService {
         playerId: '',
         playerSymbol: 'X',
         status: 'PENDING',
+        webSocketNotificationsEnabled: false,
         error: 'Player name is required'
       };
     }
 
     try {
       console.log('🎯 Finding or creating game for player:', playerName);
-      
+
       const response = await fetch(`${this.baseUrl}/api/game/new`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -53,12 +55,13 @@ export class GameMatchingService {
           playerId: '',
           playerSymbol: 'X',
           status: 'PENDING',
+          webSocketNotificationsEnabled: false,
           error: `Failed to create/join game: ${errorText}`
         };
       }
 
       const data = await response.json() as GameCreationResponse;
-      
+
       // Validate the response has required fields
       if (!data.gameId || !data.playerId || !data.playerSymbol) {
         return {
@@ -67,6 +70,7 @@ export class GameMatchingService {
           playerId: '',
           playerSymbol: 'X',
           status: 'PENDING',
+          webSocketNotificationsEnabled: false,
           error: 'Invalid response from server'
         };
       }
@@ -75,7 +79,8 @@ export class GameMatchingService {
         gameId: data.gameId,
         playerId: data.playerId,
         symbol: data.playerSymbol,
-        status: data.status
+        status: data.status,
+        webSocketNotificationsEnabled: data.webSocketNotificationsEnabled
       });
 
       return {
@@ -83,7 +88,8 @@ export class GameMatchingService {
         gameId: data.gameId,
         playerId: data.playerId,
         playerSymbol: data.playerSymbol,
-        status: data.status as 'PENDING' | 'ACTIVE'
+        status: data.status as 'PENDING' | 'ACTIVE',
+        webSocketNotificationsEnabled: data.webSocketNotificationsEnabled
       };
 
     } catch (error) {
@@ -94,6 +100,7 @@ export class GameMatchingService {
         playerId: '',
         playerSymbol: 'X',
         status: 'PENDING',
+        webSocketNotificationsEnabled: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }

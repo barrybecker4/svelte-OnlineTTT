@@ -21,6 +21,7 @@
   let isMyTurn: boolean = false;
   let wsClient: any = null;
   let wsWorking: boolean = false;
+  let webSocketNotificationsEnabled: boolean = false;
 
 
   onMount(() => {
@@ -56,30 +57,34 @@
   async function createNewGame() {
     try {
       console.log('🎯 Starting game creation for player:', playerName);
-      
+
       // Use the matching service instead of complex fetch logic
       const result = await gameMatchingService.findOrCreateGame(playerName);
-      
+
       if (!result.success) {
         throw new Error(result.error || 'Failed to create/join game');
       }
-      
+
       console.log('✅ Game join successful:', result);
-      
+
       // Set player data from the service result
       playerId = result.playerId;
-      wsWorking = false; // set to true when webSocker verified working
-      
+      wsWorking = false; // Will be set to true if WebSocket connection succeeds
+
+      // Store the webSocketNotificationsEnabled flag from the API response
+      webSocketNotificationsEnabled = result.webSocketNotificationsEnabled ?? false;
+
       // Load the full game state using the service
       gameState = await gameMatchingService.loadGameState(result.gameId);
-      
+
       if (!gameState) {
         throw new Error('Failed to load game state');
       }
-      
+
       console.log('✅ Game state loaded:', gameState);
-      
-      // Try to connect to WebSocket (existing logic)
+      console.log('🔧 WebSocket notifications enabled:', webSocketNotificationsEnabled);
+
+      // Try to connect to WebSocket
       if (wsClient && gameState) {
         console.log('🔌 Attempting WebSocket connection for game:', gameState.gameId);
         try {
@@ -89,7 +94,7 @@
           console.log('📡 Falling back to polling for game updates');
         }
       }
-      
+
     } catch (error) {
       console.error('❌ Error creating game:', error);
       alert('Failed to create game. Please try again.');
@@ -147,10 +152,12 @@
         console.log('✅ WebSocket connected successfully! Subscribing to updates...');
         wsClient.subscribeToGame(gameId, playerId);
 
-        // Set wsWorking to true to disable polling if not local
-        if (!isLocal()) {
+        // Use the stored WebSocket notifications flag from the API response
+        if (webSocketNotificationsEnabled) {
           wsWorking = true;
           console.log('📩 WebSocket working - polling disabled');
+        } else {
+          console.log('🏠 WebSocket connected but polling still enabled (server disabled notifications)');
         }
       } else {
         console.warn('❌ WebSocket connection timeout - falling back to polling');
@@ -169,7 +176,6 @@
         console.error('Failed to load game state for:', gameId);
         return;
       }
-      
 
       const previousStatus = gameState?.status; // Track previous status
       gameState = newGameState;
@@ -351,7 +357,6 @@
     }
   }
 
-
   function handlePlayerJoined(data: any) {
     if (!gameState) return;
 
@@ -359,32 +364,40 @@
 
     // Update game state with new player info
     gameState.status = data.status;
-    gameState.player2 = data.player2
-      ? {
-          id: data.player2.id,
-          symbol: 'O',
-          name: data.player2.name
-        }
-      : undefined;
+
+    if (data.player2) {
+      gameState.player2 = {
+        id: data.player2.id,
+        name: data.player2.name,
+        symbol: 'O'
+      };
+    }
+
+    gameState.board = data.board;
     gameState.lastPlayer = data.lastPlayer;
     gameState.lastMoveAt = data.lastMoveAt;
 
-    // Now the game should be ACTIVE and X goes first
+    // Determine if it's my turn based on actual player ID comparison
     const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
-    isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
 
-    console.log(
-      'Player joined - Game status:',
-      data.status,
-      'My symbol:',
-      mySymbol,
-      'Next player:',
-      data.nextPlayer,
-      'Is my turn:',
-      isMyTurn
-    );
+    // Handle PENDING vs ACTIVE states properly
+    if (data.status === 'PENDING') {
+      isMyTurn = false; // Can't make moves in PENDING state
+      console.log('Player joined but game still PENDING');
+    } else {
+      // For ACTIVE games, X goes first
+      isMyTurn = data.nextPlayer === mySymbol && data.status === 'ACTIVE';
+      console.log(
+        'Player joined - Game is now ACTIVE! My symbol:', mySymbol,
+        'Next player:', data.nextPlayer,
+        'Is my turn:', isMyTurn
+      );
+    }
 
-    // Note: Timer start is now handled by GameTimer component via isMyTurn prop changes
+    // Play sound for player joining
+    gameAudio.playPlayerJoined();
+
+    console.log('✅ Player joined successfully processed. Game state updated.');
   }
 
   function getCurrentPlayerSymbol(): 'X' | 'O' {
