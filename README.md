@@ -66,9 +66,9 @@ For local development, use the simple setup:
 cd websocket-worker
 npx wrangler dev --local --port 8787
 ```
-- Then in project root, run `npm run dev`
+Then in project root, run `npm run dev`
 
-This will connect to the local webSocket worker. It does not use Cloudflare, and it's very fast. If for some reason it does not connect (like if the worker is not rungning), it will fall back to polling every 2 seconds to check for game updates.
+This will connect to the local webSocket worker. It does not use Cloudflare, and it's very fast. If for some reason it does not connect (like if the worker is not running), it will fall back to polling every 2 seconds to check for game updates.
 
 
 ### 5. Test the Game
