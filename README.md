@@ -91,6 +91,7 @@ npx playwright install
 
 **Run E2E tests:**</br>
 This is good for running in CI build.
+After starting the worker separate terminal, run this:
 ```bash
 npm run test:e2e
 ```
