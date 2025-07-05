@@ -1,120 +1,116 @@
-import { WebSocketManager } from './WebSocketManager.js';
-import { buildWebSocketUrl } from './urlBuilder.js';
-import type { GameMessage } from '../types/websocket.js';
-
-export type GameUpdateCallback = (data: any) => void;
-export type PlayerJoinedCallback = (data: any) => void;
-export type ErrorCallback = (error: string) => void;
+import { buildWebSocketUrl } from './urlBuilder.ts';
 
 export class GameWebSocketClient {
-  private wsManager: WebSocketManager;
-  private currentGameId: string | null = null;
-
+  private ws: WebSocket | null = null;
+  private gameId: string | null = null;
   private callbacks: {
-    gameUpdate?: GameUpdateCallback;
-    playerJoined?: PlayerJoinedCallback;
-    error?: ErrorCallback;
+    gameUpdate?: (data: any) => void;
+    playerJoined?: (data: any) => void;
+    error?: (error: string) => void;
   } = {};
-
-  constructor() {
-    this.wsManager = new WebSocketManager({
-      maxReconnectAttempts: 5,
-      reconnectDelay: 1000,
-      pingInterval: 30000
-    });
-
-    this.wsManager.onMessage((data) => this.handleMessage(data));
-    this.wsManager.onClose((event) => this.handleClose(event));
-    this.wsManager.onError((error) => this.handleError(error));
-  }
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 3;
 
   async connect(gameId: string): Promise<void> {
-    if (!gameId) {
-      console.warn('Cannot connect to WebSocket without a gameId');
-      return;
-    }
+    this.gameId = gameId;
 
-    // If already connected to the same game, return immediately
-    if (this.currentGameId === gameId && this.wsManager.isConnected()) {
-      return Promise.resolve();
-    }
+    return new Promise((resolve, reject) => {
+      try {
+        const wsUrl = buildWebSocketUrl(gameId);
+        console.log('Connecting to WebSocket:', wsUrl);
 
-    this.currentGameId = gameId;
-    const wsUrl = buildWebSocketUrl(gameId);
-    
-    console.log('Connecting to game WebSocket:', gameId);
-    return this.wsManager.connect(wsUrl);
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+          console.log('✅ WebSocket connected');
+          this.reconnectAttempts = 0;
+
+          // Subscribe to this game
+          this.send({
+            type: 'subscribe',
+            gameId: gameId
+          });
+
+          resolve();
+        };
+
+        this.ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            this.handleMessage(message);
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+          }
+        };
+
+        this.ws.onclose = (event) => {
+          console.log('WebSocket closed:', event.code, event.reason);
+
+          // Try to reconnect if it wasn't a clean close and we haven't exceeded max attempts
+          if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+            console.log(`Attempting to reconnect (${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})...`);
+            this.reconnectAttempts++;
+            setTimeout(() => {
+              if (this.gameId) {
+                this.connect(this.gameId);
+              }
+            }, 1000 * this.reconnectAttempts); // Exponential backoff
+          }
+        };
+
+        this.ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          reject(new Error('WebSocket connection failed'));
+        };
+
+        // Timeout after 10 seconds
+        setTimeout(() => {
+          if (this.ws?.readyState !== WebSocket.OPEN) {
+            reject(new Error('WebSocket connection timeout'));
+          }
+        }, 10000);
+
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   disconnect(): void {
-    this.currentGameId = null;
-    this.wsManager.disconnect();
+    if (this.ws) {
+      this.ws.close(1000, 'Client disconnecting');
+      this.ws = null;
+    }
+    this.gameId = null;
+    this.reconnectAttempts = 0;
   }
 
   isConnected(): boolean {
-    return this.wsManager.isConnected();
+    return this.ws?.readyState === WebSocket.OPEN;
   }
 
-  async waitForConnection(maxWaitMs: number = 5000): Promise<boolean> {
-    return this.wsManager.waitForConnection(maxWaitMs);
-  }
-
-  subscribeToGame(gameId: string, playerId: string): void {
-    if (!gameId) {
-      console.error('Cannot subscribe to game without gameId');
-      return;
+  send(message: any): void {
+    if (this.isConnected()) {
+      this.ws!.send(JSON.stringify(message));
+    } else {
+      console.warn('Cannot send message: WebSocket not connected');
     }
-
-    this.connect(gameId)
-      .then(() => {
-        if (this.isConnected()) {
-          console.log('Subscribing to game:', gameId, 'as player:', playerId);
-          this.wsManager.send({
-            type: 'subscribe',
-            gameId,
-            playerId
-          });
-        } else {
-          console.warn('Cannot subscribe: WebSocket not connected');
-        }
-      })
-      .catch(error => {
-        console.error('Failed to connect for subscription:', error);
-      });
   }
 
-  unsubscribeFromGame(gameId: string): void {
-    if (!gameId) {
-      console.error('Cannot unsubscribe from game without gameId');
-      return;
-    }
-
-    if (!this.isConnected()) {
-      console.warn('Cannot unsubscribe: WebSocket not connected');
-      return;
-    }
-
-    console.log('Unsubscribing from game:', gameId);
-    this.wsManager.send({
-      type: 'unsubscribe',
-      gameId
-    });
-  }
-
-  onGameUpdate(callback: GameUpdateCallback): void {
+  onGameUpdate(callback: (data: any) => void): void {
     this.callbacks.gameUpdate = callback;
   }
 
-  onPlayerJoined(callback: PlayerJoinedCallback): void {
+  onPlayerJoined(callback: (data: any) => void): void {
     this.callbacks.playerJoined = callback;
   }
 
-  onError(callback: ErrorCallback): void {
+  onError(callback: (error: string) => void): void {
     this.callbacks.error = callback;
   }
 
-  private handleMessage(message: GameMessage): void {
-    console.log('Received game message:', message.type, message.gameId);
+  private handleMessage(message: any): void {
+    console.log('📩 Received WebSocket message:', message.type, message.gameId);
 
     switch (message.type) {
       case 'gameUpdate':
@@ -130,32 +126,36 @@ export class GameWebSocketClient {
         break;
 
       case 'subscribed':
-        console.log('Successfully subscribed to game:', message.gameId);
+        console.log('✅ Successfully subscribed to game:', message.gameId);
         break;
 
       case 'pong':
-        // Response to ping, connection is alive
+        // Keep-alive response
         break;
 
       case 'error':
-        console.error('WebSocket error message:', message.data);
+        console.error('❌ WebSocket error message:', message);
         if (this.callbacks.error) {
-          this.callbacks.error(message.data.error || 'Unknown error');
+          this.callbacks.error(message.error || 'Unknown WebSocket error');
         }
         break;
 
       default:
-        console.log('Unknown message type:', message.type);
+        console.log('Unknown WebSocket message type:', message.type);
     }
   }
 
-  private handleClose(event: CloseEvent): void {
-    // Game-specific close handling could go here
-    console.log('Game WebSocket closed:', event.code, event.reason);
+  // Simple ping to keep connection alive
+  ping(): void {
+    this.send({ type: 'ping' });
   }
 
-  private handleError(error: Event): void {
-    // Game-specific error handling could go here
-    console.error('Game WebSocket error:', error);
+  // Start a ping interval to keep connection alive
+  startPinging(intervalMs: number = 30000): void {
+    setInterval(() => {
+      if (this.isConnected()) {
+        this.ping();
+      }
+    }, intervalMs);
   }
 }
