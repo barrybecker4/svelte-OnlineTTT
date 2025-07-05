@@ -130,8 +130,6 @@ Your app will be available at your Cloudflare Pages URL with instant real-time u
 1. **Game Creation**: Players create/join games via HTTP API calls
 2. **Persistent Storage**: Game state and history stored in Cloudflare KV
 3. **Real-time Updates**: WebSocket connections to deployed Durable Objects
-4. **Local Development**: Polling fallback when WebSocket notifications can't be sent
-5. **Production**: Full WebSocket notifications for instant updates
 
 ## Development Scripts
 

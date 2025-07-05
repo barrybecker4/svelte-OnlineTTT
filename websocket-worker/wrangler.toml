@@ -12,10 +12,9 @@ command = ""
 name = "WEBSOCKET_HIBERNATION_SERVER"
 class_name = "WebSocketHibernationServer"
 
-# Local development
-[env.development]
-vars = { ENVIRONMENT = "development" }
+[[migrations]]
+tag = "v1"
+new_classes = ["WebSocketHibernationServer"]
 
-# Production environment
-[env.production]
-vars = { ENVIRONMENT = "production" }
+# When running locally use `wrangler dev --local --port 8787`
+
