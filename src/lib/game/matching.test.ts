@@ -20,31 +20,33 @@ describe('GameMatchingService', () => {
   describe('findOrCreateGame', () => {
     test('should return error for empty player name', async () => {
       const result = await service.findOrCreateGame('');
-      
+
       expect(result).toEqual({
         success: false,
         gameId: '',
         playerId: '',
         playerSymbol: 'X',
         status: 'PENDING',
+        webSocketNotificationsEnabled: false,
         error: 'Player name is required'
       });
-      
+
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     test('should return error for whitespace-only player name', async () => {
       const result = await service.findOrCreateGame('   ');
-      
+
       expect(result).toEqual({
         success: false,
         gameId: '',
         playerId: '',
         playerSymbol: 'X',
         status: 'PENDING',
+        webSocketNotificationsEnabled: false,
         error: 'Player name is required'
       });
-      
+
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
@@ -54,7 +56,6 @@ describe('GameMatchingService', () => {
         playerId: 'player-456',
         playerSymbol: 'X',
         status: 'PENDING',
-        webSocketNotificationsEnabled: true,
         player1: 'TestPlayer',
         player2: null
       };
@@ -87,7 +88,6 @@ describe('GameMatchingService', () => {
         playerId: 'player-101',
         playerSymbol: 'O',
         status: 'ACTIVE',
-        webSocketNotificationsEnabled: false,
         player1: 'FirstPlayer',
         player2: 'SecondPlayer'
       };
@@ -122,6 +122,7 @@ describe('GameMatchingService', () => {
         playerId: '',
         playerSymbol: 'X',
         status: 'PENDING',
+        webSocketNotificationsEnabled: false,
         error: 'Failed to create/join game: Server error message'
       });
     });
@@ -145,6 +146,7 @@ describe('GameMatchingService', () => {
         playerId: '',
         playerSymbol: 'X',
         status: 'PENDING',
+        webSocketNotificationsEnabled: false,
         error: 'Invalid response from server'
       });
     });
@@ -160,6 +162,7 @@ describe('GameMatchingService', () => {
         playerId: '',
         playerSymbol: 'X',
         status: 'PENDING',
+        webSocketNotificationsEnabled: false,
         error: 'Network error'
       });
     });
@@ -193,7 +196,7 @@ describe('GameMatchingService', () => {
   describe('loadGameState', () => {
     test('should return null for empty gameId', async () => {
       const result = await service.loadGameState('');
-      
+
       expect(result).toBeNull();
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -302,7 +305,7 @@ describe('GameMatchingService', () => {
   describe('constructor with custom baseUrl', () => {
     test('should use custom baseUrl for API calls', async () => {
       const customService = new GameMatchingService('https://custom-api.com');
-      
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({

@@ -6,7 +6,6 @@
   import GameControls from '$lib/components/game/GameControls.svelte';
   import PlayerHistory from '$lib/components/game/PlayerHistory.svelte';
   import GameTimer from '$lib/components/game/GameTimer.svelte';
-  import GamePoller from '$lib/components/game/GamePoller.svelte';
   import ConnectionStatus from '$lib/components/ConnectionStatus.svelte';
   import type { GameState, GameHistory } from '$lib/types/game.ts';
   import { GameWebSocketClient } from '$lib/websocket/client.ts';
@@ -20,7 +19,6 @@
   let playerId: string = '';
   let isMyTurn: boolean = false;
   let wsClient: any = null;
-  let wsWorking: boolean = false;
   let webSocketNotificationsEnabled: boolean = false;
 
 
@@ -69,7 +67,6 @@
 
       // Set player data from the service result
       playerId = result.playerId;
-      wsWorking = false; // Will be set to true if WebSocket connection succeeds
 
       // Store the webSocketNotificationsEnabled flag from the API response
       webSocketNotificationsEnabled = result.webSocketNotificationsEnabled ?? false;
@@ -91,7 +88,6 @@
           await connectToWebSocket(gameState.gameId, playerId);
         } catch (wsError) {
           console.error('❌ WebSocket connection error:', wsError);
-          console.log('📡 Falling back to polling for game updates');
         }
       }
 
@@ -108,7 +104,7 @@
       }
       wsClient.disconnect();
     }
-    // Note: GameTimer and GamePoller components will handle their own cleanup
+    // Note: GameTimer component will handle its own cleanup
   });
 
   if (typeof window !== 'undefined') {
@@ -123,7 +119,7 @@
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     // Cleanup
     onDestroy(() => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -151,70 +147,13 @@
       if (connected) {
         console.log('✅ WebSocket connected successfully! Subscribing to updates...');
         wsClient.subscribeToGame(gameId, playerId);
-
-        // Use the stored WebSocket notifications flag from the API response
-        if (webSocketNotificationsEnabled) {
-          wsWorking = true;
-          console.log('📩 WebSocket working - polling disabled');
-        } else {
-          console.log('🏠 WebSocket connected but polling still enabled (server disabled notifications)');
-        }
+        console.log('📩 WebSocket working - relying on notifications only');
       } else {
-        console.warn('❌ WebSocket connection timeout - falling back to polling');
+        console.warn('❌ WebSocket connection timeout');
       }
     } catch (error) {
       console.error('❌ WebSocket connection error:', error);
-      console.log('📡 Falling back to polling for game updates');
     }
-  }
-
-  async function handleGameStateUpdate(gameId: string): Promise<void> {
-    try {
-      const newGameState = await gameMatchingService.loadGameState(gameId);
-      
-      if (!newGameState) {
-        console.error('Failed to load game state for:', gameId);
-        return;
-      }
-
-      const previousStatus = gameState?.status; // Track previous status
-      gameState = newGameState;
-      
-      const mySymbol = gameState.player1.id === playerId ? 'X' : 'O';
-      
-      if (gameState.status === 'PENDING') {
-        isMyTurn = false; // Can't make moves in PENDING state
-      } else {
-        // For ACTIVE games, determine turn based on lastPlayer
-        const nextPlayer = gameState.lastPlayer === '' ? 'X' : 
-                          gameState.lastPlayer === 'X' ? 'O' : 'X';
-        isMyTurn = nextPlayer === mySymbol && gameState.status === 'ACTIVE';
-      }
-
-      checkForGameOver(gameState, mySymbol, previousStatus);
-      
-    } catch (error) {
-      console.error('Failed to handle game state update:', error);
-    }
-  }
-
-  function checkForGameOver(gameState: GameState, mySymbol: 'X' | 'O', previousStatus: string | undefined) {
-    const gameOver = gameState.status !== 'ACTIVE' && gameState.status !== 'PENDING';
-    const gameJustEnded = gameOver && previousStatus === 'ACTIVE' || previousStatus === undefined; 
-    
-    if (gameJustEnded) {
-      console.log('🎵 Game ended, playing audio for status:', gameState.status);
-      playGameOverSound(gameState.status, mySymbol);
-      loadGameHistory();
-    }
-
-    console.log('🔄 Polling update:', {
-      status: gameState.status,
-      previousStatus,
-      mySymbol,
-      isMyTurn,
-      gameJustEnded
-    });
   }
 
   async function makeMove(position: number) {
@@ -425,13 +364,6 @@
     </div>
   {:else}
     <div class="space-y-4">
-
-      <GamePoller
-        gameId={gameState.gameId}
-        gameStatus={gameState.status}
-        onGameUpdate={handleGameStateUpdate}
-        enabled={!wsWorking}
-      />
 
       <GameStatus
         status={gameState.status}

@@ -14,7 +14,6 @@ A real-time multiplayer tic-tac-toe game built with SvelteKit and Cloudflare inf
 
 - Node.js 18+
 - Cloudflare account (free tier works)
-- Basic familiarity with git and command line
 
 ## Setup Instructions
 
