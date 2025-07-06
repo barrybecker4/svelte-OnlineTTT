@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+const BASE_TIMEOUT = 500;
+
 test.describe('Debug Player Matching WebSocket Flow', () => {
   test('should show WebSocket playerJoined notifications', async ({ browser }) => {
     const context1 = await browser.newContext();
@@ -35,15 +37,15 @@ test.describe('Debug Player Matching WebSocket Flow', () => {
         localStorage.setItem('ttt-player-name', 'TestPlayer1');
       });
       await player1.reload();
-      await player1.waitForTimeout(2000);
+      await player1.waitForTimeout(BASE_TIMEOUT);
 
       console.log('=== STEP 2: Player 1 Clicks Play ===');
       await player1.click('button:has-text("Play")');
-      await expect(player1.locator('.game-board')).toBeVisible({ timeout: 10000 });
+      await expect(player1.locator('.game-board')).toBeVisible({ timeout: 5000 });
       console.log('✅ Player 1 has game board');
 
       // Wait for WebSocket connection
-      await player1.waitForTimeout(3000);
+      await player1.waitForTimeout(BASE_TIMEOUT);
 
       console.log('=== STEP 3: Player 2 Setup ===');
       await player2.goto('/');
@@ -51,16 +53,16 @@ test.describe('Debug Player Matching WebSocket Flow', () => {
         localStorage.setItem('ttt-player-name', 'TestPlayer2');
       });
       await player2.reload();
-      await player2.waitForTimeout(2000);
+      await player2.waitForTimeout(BASE_TIMEOUT);
 
       console.log('=== STEP 4: Player 2 Clicks Play ===');
       await player2.click('button:has-text("Play")');
-      await expect(player2.locator('.game-board')).toBeVisible({ timeout: 10000 });
+      await expect(player2.locator('.game-board')).toBeVisible({ timeout: 5000 });
       console.log('✅ Player 2 has game board');
 
       console.log('=== STEP 5: Wait for WebSocket Notifications ===');
       // Give enough time for WebSocket notifications to propagate
-      await player1.waitForTimeout(5000);
+      await player1.waitForTimeout(2 * BASE_TIMEOUT);
 
       console.log('=== STEP 6: Check for WebSocket Notification Logs ===');
 

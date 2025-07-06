@@ -1,10 +1,12 @@
 // e2e/practical-tests.test.ts
 import { expect, test } from '@playwright/test';
 
+const BASE_TIMEOUT = 500;
+
 test.describe('Practical Game Tests', () => {
   
   test('Player quits via Quit button - other player wins', async ({ browser }) => {
-    test.setTimeout(25000);
+    test.setTimeout(20000);
     
     const context1 = await browser.newContext();
     const context2 = await browser.newContext();
@@ -18,19 +20,19 @@ test.describe('Practical Game Tests', () => {
       await player1Page.goto('/');
       await player1Page.evaluate(() => localStorage.setItem('ttt-player-name', 'Alice'));
       await player1Page.reload();
-      await player1Page.waitForTimeout(1000);
+      await player1Page.waitForTimeout(BASE_TIMEOUT);
       await player1Page.click('button:has-text("Play")');
       
       await player2Page.goto('/');
       await player2Page.evaluate(() => localStorage.setItem('ttt-player-name', 'Bob'));
       await player2Page.reload();
-      await player2Page.waitForTimeout(1000);
+      await player2Page.waitForTimeout(BASE_TIMEOUT);
       await player2Page.click('button:has-text("Play")');
       
       // Wait for both to connect and be matched
-      await expect(player1Page.locator('.game-board')).toBeVisible({ timeout: 10000 });
-      await expect(player2Page.locator('.game-board')).toBeVisible({ timeout: 10000 });
-      await player1Page.waitForTimeout(4000); // Give time for matching
+      await expect(player1Page.locator('.game-board')).toBeVisible({ timeout: 5000 });
+      await expect(player2Page.locator('.game-board')).toBeVisible({ timeout: 5000 });
+      await player1Page.waitForTimeout(2 * BASE_TIMEOUT);
       
       // Make a quick move to ensure game is active
       const firstCell = player1Page.locator('.game-board button:first-child');
@@ -39,7 +41,7 @@ test.describe('Practical Game Tests', () => {
       if (isEnabled) {
         console.log('Player 1 making a quick move...');
         await firstCell.click();
-        await player1Page.waitForTimeout(2000);
+        await player1Page.waitForTimeout(BASE_TIMEOUT);
         
         const moveContent = await firstCell.locator('.symbol').textContent();
         console.log('Move confirmed:', moveContent);
@@ -56,7 +58,7 @@ test.describe('Practical Game Tests', () => {
       
       // Give time for quit to process and notifications to arrive
       console.log('Waiting for quit to process...');
-      await player1Page.waitForTimeout(6000);
+      await player1Page.waitForTimeout(2 * BASE_TIMEOUT);
       
       // Check if Player 1 sees a win/resignation message
       console.log('Checking Player 1 for win notification...');
@@ -78,7 +80,7 @@ test.describe('Practical Game Tests', () => {
   });
   
   test('Player timeout scenario - other player wins', async ({ browser }) => {
-    test.setTimeout(30000); // Increased timeout for this test
+    test.setTimeout(25000);
     
     const context1 = await browser.newContext();
     const context2 = await browser.newContext();
@@ -92,19 +94,19 @@ test.describe('Practical Game Tests', () => {
       await player1Page.goto('/');
       await player1Page.evaluate(() => localStorage.setItem('ttt-player-name', 'Alice'));
       await player1Page.reload();
-      await player1Page.waitForTimeout(1000);
+      await player1Page.waitForTimeout(BASE_TIMEOUT);
       await player1Page.click('button:has-text("Play")');
       
       await player2Page.goto('/');
       await player2Page.evaluate(() => localStorage.setItem('ttt-player-name', 'Bob'));
       await player2Page.reload();
-      await player2Page.waitForTimeout(1000);
+      await player2Page.waitForTimeout(BASE_TIMEOUT);
       await player2Page.click('button:has-text("Play")');
       
       // Wait for both to connect
-      await expect(player1Page.locator('.game-board')).toBeVisible({ timeout: 10000 });
-      await expect(player2Page.locator('.game-board')).toBeVisible({ timeout: 10000 });
-      await player1Page.waitForTimeout(4000);
+      await expect(player1Page.locator('.game-board')).toBeVisible({ timeout: 5000 });
+      await expect(player2Page.locator('.game-board')).toBeVisible({ timeout: 5000 });
+      await player1Page.waitForTimeout(2 * BASE_TIMEOUT);
       
       // Make a move to ensure game is active
       const firstCell = player1Page.locator('.game-board button:first-child');
@@ -113,7 +115,7 @@ test.describe('Practical Game Tests', () => {
       if (isEnabled) {
         console.log('Player 1 making a move...');
         await firstCell.click();
-        await player1Page.waitForTimeout(2000);
+        await player1Page.waitForTimeout(BASE_TIMEOUT);
         
         const moveContent = await firstCell.locator('.symbol').textContent();
         console.log('Move confirmed:', moveContent);
@@ -121,7 +123,7 @@ test.describe('Practical Game Tests', () => {
       
       // Now Player 2's turn - let them timeout (don't make any move)
       console.log('Waiting for Player 2 to timeout (10+ seconds)...');
-      await player1Page.waitForTimeout(15000); // Wait longer: 10s timer + 5s buffer
+      await player1Page.waitForTimeout(12000);
       
       // Check if Player 1 gets notified of win by timeout
       console.log('Checking for timeout win notification...');
@@ -156,14 +158,14 @@ test.describe('Practical Game Tests', () => {
       await player1Page.goto('/');
       await player1Page.evaluate(() => localStorage.setItem('ttt-player-name', 'Tester'));
       await player1Page.reload();
-      await player1Page.waitForTimeout(1000);
+      await player1Page.waitForTimeout(BASE_TIMEOUT);
       await player1Page.click('button:has-text("Play")');
 
-      await expect(player1Page.locator('.game-board')).toBeVisible({ timeout: 10000 });
+      await expect(player1Page.locator('.game-board')).toBeVisible({ timeout: 5000 });
       console.log('✅ Game created');
 
       // Wait for the game state to stabilize before looking for New Game button
-      await player1Page.waitForTimeout(3000);
+      await player1Page.waitForTimeout(BASE_TIMEOUT);
 
       // Debug: Log all visible buttons before attempting to find New Game
       const allButtons = await player1Page.locator('button').allTextContents();
@@ -193,7 +195,7 @@ test.describe('Practical Game Tests', () => {
       if (!newGameButton) {
         // If we still can't find it, try waiting longer and check game state
         console.log('❌ New Game button not found, waiting longer and debugging...');
-        await player1Page.waitForTimeout(5000);
+        await player1Page.waitForTimeout(3 * BASE_TIMEOUT);
 
         // Debug game state
         const gameStatusText = await player1Page.locator('.game-status').textContent();
@@ -201,15 +203,15 @@ test.describe('Practical Game Tests', () => {
 
         // Try again with a more generous timeout
         newGameButton = player1Page.locator('button:has-text("New Game")');
-        await expect(newGameButton).toBeVisible({ timeout: 10000 });
+        await expect(newGameButton).toBeVisible({ timeout: 5000 });
       } else {
         // Ensure the button is visible before clicking
-        await expect(newGameButton).toBeVisible({ timeout: 5000 });
+        await expect(newGameButton).toBeVisible({ timeout: 2000 });
       }
 
       console.log(`Clicking New Game button (found with: ${selectorUsed})`);
       await newGameButton.click();
-      await player1Page.waitForTimeout(2000);
+      await player1Page.waitForTimeout(BASE_TIMEOUT);
 
       // Verify restart worked - should either show Play button OR still show game board
       const playButton = await player1Page.locator('button:has-text("Play")').count();

@@ -1,4 +1,3 @@
-// e2e/five-games-creation-only.test.ts
 import { test, expect, Browser, BrowserContext, Page } from '@playwright/test';
 
 interface GamePlayer {
@@ -18,7 +17,7 @@ interface Game {
 
 test.describe('Five Games Creation Test - Simple', () => {
   test('should successfully create 5 concurrent games without timeouts', async ({ browser }) => {
-    test.setTimeout(60000); // 1 minute timeout - much more reasonable
+    test.setTimeout(60000); // 1 minute timeout
     console.log('🎮 Starting SIMPLE 5 games creation test...');
 
     const contexts: BrowserContext[] = [];
