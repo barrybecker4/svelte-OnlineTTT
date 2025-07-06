@@ -7,6 +7,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
   },
   testDir: 'e2e',
+  workers: 1,
   use: {
     baseURL: 'http://localhost:5173',
     // Uncomment these for visual debugging
