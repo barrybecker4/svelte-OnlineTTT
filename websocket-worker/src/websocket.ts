@@ -19,6 +19,7 @@ export class WebSocketHibernationServer implements DurableObject {
     return new Response('Not found', { status: 404 });
   }
 
+  // Transforms regular HTTP request into a WebSocket connection
   private handleWebSocketUpgrade(request: Request): Response {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected websocket', { status: 400 });
@@ -69,8 +70,6 @@ export class WebSocketHibernationServer implements DurableObject {
       if (session) {
         session.gameId = message.gameId;
         console.log(`✅ Session ${sessionId} subscribed to game: ${message.gameId}`);
-
-        // Log current game subscriptions for debugging
         this.logGameSubscriptions();
 
         // Send confirmation

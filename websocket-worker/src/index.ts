@@ -12,7 +12,6 @@ export default {
     // Route WebSocket and notification requests to Durable Object
     if (url.pathname === '/websocket' || url.pathname === '/notify') {
       // Route ALL requests to the SAME Durable Object instance
-      // This ensures WebSocket connections and notifications go to the same place
       const id = env.WEBSOCKET_HIBERNATION_SERVER.idFromName('global-websocket-handler');
       const durableObject = env.WEBSOCKET_HIBERNATION_SERVER.get(id);
 

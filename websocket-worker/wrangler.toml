@@ -16,5 +16,6 @@ class_name = "WebSocketHibernationServer"
 tag = "v1"
 new_classes = ["WebSocketHibernationServer"]
 
+# When deploying to Cloudflare, use `wrangler deploy`
 # When running locally use `wrangler dev --local --port 8787`
 

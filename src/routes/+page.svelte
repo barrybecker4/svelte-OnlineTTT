@@ -53,6 +53,51 @@
     });
   }
 
+  async function handleNewGame() {
+    console.log('🎮 Starting new game - cleaning up state...');
+
+    try {
+      // Step 1: Disconnect WebSocket cleanly
+      if (wsClient) {
+        console.log('🔌 Disconnecting WebSocket...');
+        wsClient.disconnect();
+      }
+
+      // Step 2: Reset ALL game-related state
+      console.log('🧹 Resetting game state...');
+      gameState = null;
+      playerId = '';
+      isMyTurn = false;
+      webSocketNotificationsEnabled = false;
+      gameHistory = null;
+
+      // Step 3: Give a moment for cleanup to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Step 4: Create fresh game
+      console.log('🎯 Creating fresh game...');
+      await createNewGame();
+
+      console.log('✅ New game started successfully');
+
+    } catch (error) {
+      console.error('❌ Error starting new game:', error);
+
+      // Fallback: Force complete reset
+      console.log('🔄 Forcing complete state reset...');
+      if (wsClient) {
+        wsClient.disconnect();
+      }
+      gameState = null;
+      playerId = '';
+      isMyTurn = false;
+      webSocketNotificationsEnabled = false;
+      gameHistory = null;
+
+      alert('Error starting new game. Please refresh the page if issues persist.');
+    }
+  }
+
   async function createNewGame() {
     try {
       console.log('🎯 Starting game creation for player:', playerName);
@@ -305,7 +350,7 @@
         gameStatus={gameState?.status || 'PENDING'}
         canQuit={gameState && (gameState.status === 'ACTIVE' || gameState.status === 'PENDING')}
         isInGame={gameState !== null}
-        onNewGame={() => { gameState = null; }}
+        onNewGame={handleNewGame}
         onQuitGame={() => endGame('RESIGN')}
       />
 
