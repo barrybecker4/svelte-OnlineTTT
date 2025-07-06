@@ -20,7 +20,7 @@
     const playerAsO = isPlayer1 ? history.player2AsX : history.player1AsX;
 
     text += formatResultLine(
-      'X',
+      'O',
       playerAsX.totalWins,
       playerAsX.totalLosses,
       playerAsX.totalTies,
@@ -28,7 +28,7 @@
       playerAsX.losses
     );
     text += formatResultLine(
-      'O',
+      'X',
       playerAsO.totalWins,
       playerAsO.totalLosses,
       playerAsO.totalTies,

@@ -124,6 +124,7 @@
 
       console.log('✅ Game state loaded:', gameState);
       console.log('🔧 WebSocket notifications enabled:', webSocketNotificationsEnabled);
+      await loadGameHistory();
 
       // Connect to WebSocket
       if (wsClient && gameState) {
@@ -217,11 +218,21 @@
         body: JSON.stringify({ playerId, reason })
       });
 
+      const data = await response.json();
+      console.log('✅ Game ended:', data);
+
       if (response.ok) {
+        // Update game state to reflect the quit
+        gameState = {
+          ...gameState,
+          status: data.status,
+          lastPlayer: data.lastPlayer,
+          lastMoveAt: data.lastMoveAt
+        };
         console.log(`Game ended: ${reason.toLowerCase()}`);
       }
     } catch (error) {
-      console.error('Error ending game:', error);
+      console.error('❌ Error ending game:', error);
     }
   }
 
@@ -252,14 +263,18 @@
     // Handle game over
     const gameOver = data.status !== 'ACTIVE' && data.status !== 'PENDING';
     if (gameOver) {
+      loadGameHistory();
       playGameOverSound(data.status, mySymbol);
     }
   }
 
-  function handlePlayerJoined(data: any) {
-    if (!gameState) return;
+ function handlePlayerJoined(data: any) {
+    if (!gameState) {
+      console.warn('⚠️ Received playerJoined but no game state available');
+      return;
+    }
 
-    console.log('👋 Handling player joined:', data);
+    console.log('👋 Processing player joined notification:', data);
 
     // Update game state with new player info
     gameState.status = data.status;
@@ -288,6 +303,7 @@
 
     // Play sound for player joining
     gameAudio.playPlayerJoined();
+    loadGameHistory();
 
     console.log('✅ Player joined successfully processed');
   }
@@ -302,6 +318,36 @@
       } else {
         gameAudio.playGameLost();
       }
+    }
+  }
+
+  async function loadGameHistory() {
+    if (!gameState.player1 || !gameState.player2) {
+      return;
+    }
+
+    try {
+      console.log('📊 Loading game history...', gameState);
+
+      const response = await fetch('/api/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          player1: gameState.player1.name,
+          player2: gameState.player2.name
+        })
+      });
+
+      if (response.ok) {
+        gameHistory = await response.json();
+        console.log('✅ Game history loaded:', gameHistory);
+      } else {
+        console.error('❌ Failed to load game history:', response.statusText);
+        gameHistory = null;
+      }
+    } catch (error) {
+      console.error('❌ Error loading game history:', error);
+      gameHistory = null;
     }
   }
 
