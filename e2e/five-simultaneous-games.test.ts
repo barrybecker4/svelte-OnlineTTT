@@ -23,13 +23,24 @@ test.describe('Five Simultaneous Games Test', () => {
   test('should create 5 concurrent games using manual UI clicks with positioned windows', async () => {
     test.setTimeout(120000); // 2 minutes timeout
     console.log('🎮 Starting 5 simultaneous games test with positioned windows...');
-    console.log('📋 Layout: 5 vertical columns, each with Player A (top) and Player B (bottom)');
     console.log('🔴 Red = Player A (X)  |  🔵 Blue = Player B (O)');
+
+    // Check if WebSocket worker is running
+    console.log('🏥 Checking WebSocket worker health...');
+    try {
+      const healthResponse = await fetch('http://localhost:8787/health');
+      if (healthResponse.ok) {
+        console.log('✅ WebSocket worker is running - expect real-time moves!');
+      } else {
+        console.log('⚠️ WebSocket worker not responding');
+      }
+    } catch (error) {
+      console.log('❌ WebSocket worker not running - start it with: cd websocket-worker && npx wrangler dev --local --port 8787');
+    }
 
     const gamePairs: GamePair[] = [];
 
     try {
-      // Create 5 game pairs with positioned browser windows
       for (let gameNum = 1; gameNum <= 5; gameNum++) {
         const pair = await createPositionedGamePair(gameNum);
         gamePairs.push(pair);
@@ -37,7 +48,6 @@ test.describe('Five Simultaneous Games Test', () => {
 
       console.log('✅ Created 5 positioned game pairs');
 
-      // Setup all players with staggered timing
       console.log('📱 Setting up all players with staggered timing...');
       for (let i = 0; i < gamePairs.length; i++) {
         const pair = gamePairs[i];
@@ -81,15 +91,17 @@ test.describe('Five Simultaneous Games Test', () => {
         console.log(`Game ${index + 1}: ${status} ${details}`);
       });
 
-      // Accept 3 out of 5 games as success
-      expect(successfulGames.length).toBeGreaterThanOrEqual(3);
-      console.log(`🎉 SUCCESS: ${successfulGames.length}/5 games successfully created and active!`);
+      expect(successfulGames.length).toEqual(5);
 
-      // Test basic gameplay in the first successful game
-      const firstSuccessfulGameIndex = verificationResults.findIndex(r => r.success);
-      if (firstSuccessfulGameIndex >= 0) {
-        await testBasicGameplay(gamePairs[firstSuccessfulGameIndex]);
-      }
+      // Test basic gameplay in all games
+      verificationResults.forEach((result, index) => {
+        if (result.success) {
+          console.log(`🎮 Testing basic gameplay in Game ${index + 1}...`);
+          testBasicGameplay(gamePairs[index]);
+        } else {
+          console.log(`❌ Skipping gameplay test for Game ${index + 1} due to failure`);
+        }
+      });
 
     } finally {
       console.log('🧹 Cleaning up all browser instances...');
