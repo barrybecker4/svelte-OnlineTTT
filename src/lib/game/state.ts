@@ -58,13 +58,6 @@ export function terminateGame(game: GameState, resigningPlayer: PlayerSymbol, re
 }
 
 /**
- * Check if a game is complete (finished, not active)
- */
-export function isGameComplete(game: GameState): boolean {
-  return game.status !== 'PENDING' && game.status !== 'ACTIVE';
-}
-
-/**
  * Get the player whose turn it is (or would be once game starts)
  */
 export function getCurrentPlayer(game: GameState): PlayerSymbol | null {
@@ -81,32 +74,10 @@ export function getCurrentPlayer(game: GameState): PlayerSymbol | null {
 }
 
 /**
- * Check if it's a specific player's turn
- */
-export function isPlayerTurn(game: GameState, playerSymbol: PlayerSymbol): boolean {
-  // For PENDING games, only X (player 1) should be ready
-  if (game.status === 'PENDING') return playerSymbol === 'X';
-
-  if (game.status !== 'ACTIVE') return false;
-
-  // X goes first, then alternate based on lastPlayer
-  if (game.lastPlayer === '') return playerSymbol === 'X';
-
-  return game.lastPlayer !== playerSymbol;
-}
-
-/**
  * Generate a unique player ID
  */
 function generatePlayerId(): string {
   return uuidv4().substring(0, 8);
-}
-
-/**
- * Check if a player ID matches either player in the game
- */
-export function isPlayerInGame(game: GameState, playerId: string): boolean {
-  return game.player1.id === playerId || game.player2?.id === playerId;
 }
 
 /**

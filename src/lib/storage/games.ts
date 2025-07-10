@@ -7,6 +7,8 @@ const KEYS = {
   PLAYER_GAME: (playerId: string) => `player:${playerId}:game`
 };
 
+const GAME_EXPIRATION_SECONDS = 3600; // 1 hour
+
 export class GameStorage {
   constructor(private kv: KVStorage) {}
 
@@ -27,9 +29,9 @@ export class GameStorage {
     await this.kv.put(KEYS.GAME(game.gameId), game);
 
     // Update player-to-game mappings
-    await this.kv.put(KEYS.PLAYER_GAME(game.player1.id), game.gameId, 3600); // 1 hour TTL
+    await this.kv.put(KEYS.PLAYER_GAME(game.player1.id), game.gameId, GAME_EXPIRATION_SECONDS);
     if (game.player2) {
-      await this.kv.put(KEYS.PLAYER_GAME(game.player2.id), game.gameId, 3600);
+      await this.kv.put(KEYS.PLAYER_GAME(game.player2.id), game.gameId, GAME_EXPIRATION_SECONDS);
     }
 
     // Update open games list if needed

@@ -114,8 +114,6 @@
       // Set player data from the service result
       playerId = result.playerId;
       webSocketNotificationsEnabled = result.webSocketNotificationsEnabled ?? false;
-
-      // Load the full game state
       gameState = await gameMatchingService.loadGameState(result.gameId);
 
       if (!gameState) {

@@ -118,19 +118,3 @@ export function getOtherPlayer(symbol: PlayerSymbol): PlayerSymbol {
 export function createEmptyBoard(): string {
   return '_________';
 }
-
-/**
- * Validate if a board string is properly formatted
- */
-export function isValidBoard(board: string): boolean {
-  if (board.length !== 9) return false;
-
-  // Check that it only contains valid characters
-  for (const char of board) {
-    if (char !== '_' && char !== 'X' && char !== 'O') {
-      return false;
-    }
-  }
-
-  return true;
-}

@@ -1,4 +1,4 @@
-import type { GameState } from '$lib/types/game';
+import type { GameState, GameStatus, PlayerSymbol } from '$lib/types/game';
 import type { GameStateResponse, GameCreationResponse } from '$lib/types/api';
 
 interface GameJoinResult {
@@ -117,21 +117,21 @@ export class GameMatchingService {
 
     try {
       console.log('📊 Loading game state for:', gameId);
-      
+
       const response = await fetch(`${this.baseUrl}/api/game/${gameId}`);
-      
+
       if (!response.ok) {
         console.error(`Failed to load game: ${response.status} ${response.statusText}`);
         return null;
       }
 
       const data = await response.json() as GameStateResponse;
-      
+
       // Convert API response to GameState
       const gameState: GameState = {
         gameId: data.gameId,
         board: data.board,
-        status: data.status as any,
+        status: data.status as GameStatus,
         player1: {
           id: data.player1Id,
           symbol: 'X',
@@ -142,7 +142,7 @@ export class GameMatchingService {
           symbol: 'O',
           name: data.player2
         } : undefined,
-        lastPlayer: data.lastPlayer as any,
+        lastPlayer: data.lastPlayer as PlayerSymbol | '',
         createdAt: Date.now(), // API doesn't return this currently
         lastMoveAt: data.lastMoveAt
       };

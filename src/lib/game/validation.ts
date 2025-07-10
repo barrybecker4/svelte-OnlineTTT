@@ -1,5 +1,4 @@
 import type { GameState, PlayerSymbol } from '../types/game.ts';
-import { isValidBoard } from './logic.ts';
 
 export class GameValidationError extends Error {
   constructor(message: string) {
@@ -35,27 +34,6 @@ export function validateMove(game: GameState, playerId: string, cellPosition: nu
   // Check if cell is empty
   if (game.board.charAt(cellPosition) !== '_') {
     throw new GameValidationError('Cell is already occupied');
-  }
-}
-
-/**
- * Validate game state integrity
- */
-export function validateGameState(game: GameState): void {
-  if (!game.gameId) {
-    throw new GameValidationError('Game must have an ID');
-  }
-
-  if (!isValidBoard(game.board)) {
-    throw new GameValidationError('Invalid board state');
-  }
-
-  if (!game.player1) {
-    throw new GameValidationError('Game must have player1');
-  }
-
-  if (game.status === 'ACTIVE' && !game.player2) {
-    throw new GameValidationError('Active game must have player2');
   }
 }
 

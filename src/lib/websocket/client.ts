@@ -149,13 +149,4 @@ export class GameWebSocketClient {
   ping(): void {
     this.send({ type: 'ping' });
   }
-
-  // Start a ping interval to keep connection alive
-  startPinging(intervalMs: number = 30000): void {
-    setInterval(() => {
-      if (this.isConnected()) {
-        this.ping();
-      }
-    }, intervalMs);
-  }
 }

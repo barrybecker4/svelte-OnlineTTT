@@ -10,6 +10,7 @@
 
   $: statusMessage = getStatusMessage(status, currentPlayer, isMyTurn);
 
+  // make GameStatus a class not a type
   function getStatusMessage(status: GameStatus, currentPlayer: 'X' | 'O', isMyTurn: boolean): string {
     switch (status) {
       case 'PENDING':
