@@ -125,34 +125,36 @@ export class GameMatchingService {
         return null;
       }
 
-      const data = await response.json() as GameStateResponse;
-
-      // Convert API response to GameState
-      const gameState: GameState = {
-        gameId: data.gameId,
-        board: data.board,
-        status: data.status as GameStatus,
-        player1: {
-          id: data.player1Id,
-          symbol: 'X',
-          name: data.player1
-        },
-        player2: data.player2 && data.player2Id ? {
-          id: data.player2Id,
-          symbol: 'O',
-          name: data.player2
-        } : undefined,
-        lastPlayer: data.lastPlayer as PlayerSymbol | '',
-        createdAt: Date.now(), // API doesn't return this currently
-        lastMoveAt: data.lastMoveAt
-      };
-
-      console.log('✅ Game state loaded successfully');
-      return gameState;
+      const responseData = await response.json() as GameStateResponse;
+      return this.gameStateFromResponse(responseData);
 
     } catch (error) {
       console.error('❌ Error loading game state:', error);
       return null;
     }
+  }
+
+  gameStateFromResponse(response: GameStateResponse): GameState | null {
+    const gameState: GameState = {
+      gameId: response.gameId,
+      board: response.board,
+      status: response.status as GameStatus,
+      player1: {
+        id: response.player1Id,
+        symbol: 'X',
+        name: response.player1
+      },
+      player2: response.player2 && response.player2Id ? {
+        id: response.player2Id,
+        symbol: 'O',
+        name: response.player2
+      } : undefined,
+      lastPlayer: response.lastPlayer as PlayerSymbol | '',
+      createdAt: Date.now(), // API doesn't return this currently
+      lastMoveAt: response.lastMoveAt
+    };
+
+    console.log('✅ Game state loaded successfully');
+    return gameState;
   }
 }

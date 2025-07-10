@@ -25,7 +25,6 @@ export class GameWebSocketClient {
           console.log('✅ WebSocket connected');
           this.reconnectAttempts = 0;
 
-          // Subscribe to this game
           this.send({
             type: 'subscribe',
             gameId: gameId

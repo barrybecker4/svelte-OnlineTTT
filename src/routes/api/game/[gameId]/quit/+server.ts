@@ -43,7 +43,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
       console.log(
         `🚨 Sending WebSocket notification for player quit/timeout - game: ${gameId}, player: ${playerSymbol}, reason: ${reason}`
       );
-      await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform, `${reason.toLowerCase()}`);
+      await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
 
       return json({
         gameId: updatedGame.gameId,

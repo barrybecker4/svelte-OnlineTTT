@@ -22,14 +22,14 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
     const gameStorage = new GameStorage(kv);
     const historyStorage = new HistoryStorage(kv);
 
-    const game = await gameStorage.getGame(gameId);
-    if (!game) {
+    const gameState = await gameStorage.getGame(gameId);
+    if (!gameState) {
       return json({ error: 'Game not found' }, { status: 404 });
     }
 
     // Validate the move
     try {
-      validateMove(game, playerId, cellPosition);
+      validateMove(gameState, playerId, cellPosition);
     } catch (error) {
       if (error instanceof GameValidationError) {
         return json({ error: error.message }, { status: 400 });
@@ -38,16 +38,15 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
     }
 
     // Get player symbol and make the move
-    const playerSymbol = getPlayerSymbol(game, playerId);
+    const playerSymbol = getPlayerSymbol(gameState, playerId);
     if (!playerSymbol) {
       return json({ error: 'Player not in game' }, { status: 400 });
     }
 
-    const moveResult = makeMove(playerSymbol, cellPosition, game.board);
+    const moveResult = makeMove(playerSymbol, cellPosition, gameState.board);
 
-    // Update game state
     const updatedGame = {
-      ...game,
+      ...gameState,
       board: moveResult.boardData,
       status: moveResult.status,
       lastPlayer: playerSymbol,
@@ -61,14 +60,12 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
       await historyStorage.addGameToHistory(updatedGame);
     }
 
-    await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform, 'move');
+    await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
 
     const nextPlayer = getCurrentPlayer(updatedGame);
 
     return json({
-      gameId: updatedGame.gameId,
-      board: updatedGame.board,
-      status: updatedGame.status,
+      ...updatedGame,
       nextPlayer,
       winningPositions: moveResult.winningPositions,
       lastPlayer: updatedGame.lastPlayer,

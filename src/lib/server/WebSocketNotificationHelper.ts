@@ -38,7 +38,7 @@ export class WebSocketNotificationHelper {
   /**
    * Send a game update notification - SIMPLIFIED
    */
-  static async sendGameUpdate(gameState: GameState, platform: any): Promise<void> {
+  static async sendGameUpdate(gameState: GameState, platform: App.Platform): Promise<void> {
     console.log(`🔔 Sending gameUpdate notification for game ${gameState.gameId}`);
 
     const nextPlayer = gameState.lastPlayer === '' ? 'X' :
@@ -74,7 +74,7 @@ export class WebSocketNotificationHelper {
   /**
    * Simple HTTP POST to WebSocket worker with retry and fallback
    */
-  private static async sendNotification(gameId: string, message: any, platform: any): Promise<void> {
+  private static async sendNotification(gameId: string, message: any, platform: App.Platform): Promise<void> {
     const isLocalDevelopment = !platform?.env?.WEBSOCKET_HIBERNATION_SERVER;
 
     if (!isLocalDevelopment) {
@@ -141,7 +141,7 @@ export class WebSocketNotificationHelper {
   /**
    * Simple environment detection
    */
-  static getEnvironmentInfo(platform: any) {
+  static getEnvironmentInfo(platform: App.Platform) {
     const isLocalDevelopment = !platform?.env?.WEBSOCKET_HIBERNATION_SERVER;
     return {
       isLocalDevelopment,
