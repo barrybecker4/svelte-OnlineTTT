@@ -1,18 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  
-  export let wsClient: any;
+
+  export let wsClient: WebSocketClient | null;
   let isConnected = false;
-  
+
   onMount(() => {
     const checkConnection = () => {
       isConnected = wsClient?.isConnected() || false;
     };
-    
+
     // Check connection status every few seconds
     const interval = setInterval(checkConnection, 3000);
     checkConnection();
-    
+
     return () => clearInterval(interval);
   });
 </script>

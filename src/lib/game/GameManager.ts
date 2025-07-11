@@ -53,6 +53,10 @@ export class GameManager {
     return this.isMyTurn;
   }
 
+  public getWebSocketClient(): GameWebSocketClient | null {
+    return this.wsClient;
+  }
+
   public getWebSocketNotificationsEnabled(): boolean {
     return this.webSocketNotificationsEnabled;
   }
@@ -60,7 +64,7 @@ export class GameManager {
   public async createNewGame(): Promise<void> {
     try {
       if (this.gameState && this.playerId) {
-        this.quitCurrentGame(this.gameState, this.playerId); // quit current if one is active
+        await this.quitCurrentGame(this.gameState, this.playerId); // quit current if one is active
       }
 
       this.disconnectWebSocket();
@@ -210,6 +214,7 @@ export class GameManager {
   }
 
   private async quitCurrentGame(gameState: GameState, playerId: string, reason = 'RESIGN'): Promise<Response> {
+    console.log('Quid:', gameState.gameId);
     return fetch(`/api/game/${gameState.gameId}/quit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

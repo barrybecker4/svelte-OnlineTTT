@@ -15,6 +15,7 @@
   let playerName: string = '';
   let playerId: string = '';
   let isMyTurn: boolean = false;
+  let wsClient: WebSocketClient | null = null;
   let webSocketNotificationsEnabled: boolean = false;
   let gameManager: GameManager | null = null;
 
@@ -69,6 +70,7 @@
 
     gameManager = new GameManager(callbacks);
     gameManager.initialize(playerName);
+    wsClient = gameManager.getWebSocketClient();
   }
 
   async function handleNewGame(): Promise<void> {
@@ -166,8 +168,7 @@
     </div>
 
     <div class="space-y-6">
-      <!-- Connection Status -->
-      <ConnectionStatus {webSocketNotificationsEnabled} />
+      <ConnectionStatus {wsClient} />
 
       {#if gameState}
         <GameTimer {isMyTurn} onTimeout={() => handleEndGame('TIMEOUT')} timerDuration={10} />
