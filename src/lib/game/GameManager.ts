@@ -140,8 +140,8 @@ export class GameManager {
     this.gameState.board = newBoard.join('');
 
     // Disable moves temporarily
-    this.isMyTurn = false;
-    this.callbacks.onTurnChanged(this.isMyTurn);
+    //this.isMyTurn = false;
+    //this.callbacks.onTurnChanged(this.isMyTurn);
 
     try {
       console.log('Making move at position:', position);
@@ -214,7 +214,7 @@ export class GameManager {
   }
 
   private async quitCurrentGame(gameState: GameState, playerId: string, reason = 'RESIGN'): Promise<Response> {
-    console.log('Quid:', gameState.gameId);
+    console.log('Quit:', gameState.gameId);
     return fetch(`/api/game/${gameState.gameId}/quit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
