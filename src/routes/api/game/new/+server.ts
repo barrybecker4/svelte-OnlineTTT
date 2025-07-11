@@ -4,6 +4,7 @@ import { KVStorage } from '$lib/storage/kv.ts';
 import { GameStorage } from '$lib/storage/games.ts';
 import { createNewGame, addPlayer2ToGame } from '$lib/game/state.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.js';
+import type { GameState } from '$lib/types/game.ts';
 
 interface NewGameRequest {
   playerName: string;
@@ -25,75 +26,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   console.log('🌍 Environment detection:', envInfo);
 
   try {
-    // STEP 1: Clean up stale games
     await gameStorage.cleanupOpenGamesList();
-
-    // STEP 2: Get all available games
     const openGames = await gameStorage.getOpenGames();
     console.log(`📋 Found ${openGames.length} open games after cleanup`);
 
-    // Log details of each open game for debugging
-    openGames.forEach((game, index) => {
-      console.log(`  ${index + 1}. Game ${game.gameId}:`);
-      console.log(`     - Player1: "${game.player1.name}" (id: ${game.player1.id})`);
-      console.log(`     - Player2: ${game.player2 ? game.player2.name : 'WAITING'}`);
-      console.log(`     - Status: ${game.status}`);
-      console.log(`     - Created: ${new Date(game.createdAt).toISOString()}`);
-    });
-
-    // STEP 3: Try to find an available game for this player
-    console.log(`🔍 Looking for available game for "${playerName}"...`);
-
-    const availableGames = openGames.filter(game =>
-      game.player1.name !== playerName &&
-      !game.player2 &&
-      game.status === 'PENDING'
-    );
-
-    console.log(`🎯 Found ${availableGames.length} games that "${playerName}" can join`);
-    availableGames.forEach((game, index) => {
-      console.log(`  Available game ${index + 1}: ${game.gameId} (player1: "${game.player1.name}")`);
-    });
-
-    const availableGame = availableGames[0]; // Take the first available game
+    const availableGame = await findAvailableGame(openGames);
 
     if (availableGame) {
-      console.log(`🎮 JOINING EXISTING GAME: "${playerName}" joining game ${availableGame.gameId} with "${availableGame.player1.name}"`);
-
-      // Double-check that the game is still available by fetching fresh data
-      const freshGame = await gameStorage.getGame(availableGame.gameId);
-      if (!freshGame) {
-        console.log(`❌ Game ${availableGame.gameId} no longer exists, creating new game instead`);
-      } else if (freshGame.status !== 'PENDING') {
-        console.log(`❌ Game ${availableGame.gameId} is no longer PENDING (status: ${freshGame.status}), creating new game instead`);
-      } else if (freshGame.player2) {
-        console.log(`❌ Game ${availableGame.gameId} already has player2, creating new game instead`);
-      } else {
-        // Game is still available - join it!
-        console.log(`✅ Game ${availableGame.gameId} is still available, adding "${playerName}" as player2`);
-
-        const updatedGame = addPlayer2ToGame(freshGame, playerName);
-        await gameStorage.saveGame(updatedGame);
-
-        console.log(`🎉 GAME NOW ACTIVE: ${updatedGame.gameId}`);
-        console.log(`   Player 1: "${updatedGame.player1.name}" (${updatedGame.player1.id})`);
-        console.log(`   Player 2: "${updatedGame.player2!.name}" (${updatedGame.player2!.id})`);
-        console.log(`   Status: ${updatedGame.status}`);
-
-        // Send WebSocket notification about player joining
-        console.log(`📡 Sending playerJoined notification...`);
-        await WebSocketNotificationHelper.sendPlayerJoined(updatedGame, platform);
-
-        return json({
-          gameId: updatedGame.gameId,
-          player1: updatedGame.player1.name,
-          player2: updatedGame.player2!.name,
-          playerId: updatedGame.player2!.id,
-          playerSymbol: 'O',
-          status: 'ACTIVE',
-          webSocketNotificationsEnabled: envInfo.webSocketNotificationsAvailable
-        });
-      }
+      const json = await getJsonForGame(availableGame);
+      if (json) return json;
     }
 
     // STEP 4: No available game found - create new game
@@ -120,4 +61,63 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     console.error('❌ ERROR in /api/game/new:', error);
     return json({ error: 'Failed to create or join game' }, { status: 500 });
   }
+
+
+  function findAvailableGame(openGames: GameState[]): GameState {
+    console.log(`🔍 Looking for available game for "${playerName}"...`);
+
+    const availableGames = openGames.filter(game =>
+      game.player1.name !== playerName &&
+      !game.player2 &&
+      game.status === 'PENDING'
+    );
+
+    console.log(`🎯 Found ${availableGames.length} games that "${playerName}" can join`);
+    availableGames.forEach((game, index) => {
+      console.log(`  Available game ${index + 1}: ${game.gameId} (player1: "${game.player1.name}")`);
+    });
+
+    return availableGames[0]; // Take the first available game
+  }
+
+  async function getJsonForGame(availableGame: GameState) {
+    console.log(`🎮 JOINING EXISTING GAME: "${playerName}" joining game ${availableGame.gameId} with "${availableGame.player1.name}"`);
+
+    // Double-check that the game is still available by fetching fresh data
+    const freshGame = await gameStorage.getGame(availableGame.gameId);
+    if (!freshGame) {
+      console.log(`❌ Game ${availableGame.gameId} no longer exists, creating new game instead`);
+    } else if (freshGame.status !== 'PENDING') {
+      console.log(`❌ Game ${availableGame.gameId} is no longer PENDING (status: ${freshGame.status}), creating new game instead`);
+    } else if (freshGame.player2) {
+      console.log(`❌ Game ${availableGame.gameId} already has player2, creating new game instead`);
+    } else {
+      // Game is still available - join it!
+      console.log(`✅ Game ${availableGame.gameId} is still available, adding "${playerName}" as player2`);
+
+      const updatedGame = addPlayer2ToGame(freshGame, playerName);
+      await gameStorage.saveGame(updatedGame);
+
+      console.log(`🎉 GAME NOW ACTIVE: ${updatedGame.gameId}`);
+      console.log(`   Player 1: "${updatedGame.player1.name}" (${updatedGame.player1.id})`);
+      console.log(`   Player 2: "${updatedGame.player2!.name}" (${updatedGame.player2!.id})`);
+      console.log(`   Status: ${updatedGame.status}`);
+
+      // Send WebSocket notification about player joining
+      console.log(`📡 Sending playerJoined notification...`);
+      await WebSocketNotificationHelper.sendPlayerJoined(updatedGame, platform);
+
+      return json({
+        gameId: updatedGame.gameId,
+        player1: updatedGame.player1.name,
+        player2: updatedGame.player2!.name,
+        playerId: updatedGame.player2!.id,
+        playerSymbol: 'O',
+        status: 'ACTIVE',
+        webSocketNotificationsEnabled: envInfo.webSocketNotificationsAvailable
+      });
+    }
+    return null;
+  }
 };
+
