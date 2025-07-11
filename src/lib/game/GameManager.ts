@@ -59,6 +59,10 @@ export class GameManager {
 
   public async createNewGame(): Promise<void> {
     try {
+      if (this.gameState && this.playerId) {
+        this.quitCurrentGame(this.gameState, this.playerId); // quit current if one is active
+      }
+
       this.disconnectWebSocket();
       this.clearGameState();
 
@@ -177,15 +181,8 @@ export class GameManager {
 
     try {
       console.log('🏁 Ending game...');
-
-      const response = await fetch(`/api/game/${this.gameState.gameId}/quit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: this.playerId,
-          reason
-        })
-      });
+      const response =
+        await this.quitCurrentGame(this.gameState, this.playerId, reason);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -210,6 +207,14 @@ export class GameManager {
       console.error('Error ending game:', error);
       throw error;
     }
+  }
+
+  private async quitCurrentGame(gameState: GameState, playerId: string, reason = 'RESIGN'): Promise<Response> {
+    return fetch(`/api/game/${gameState.gameId}/quit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerId, reason })
+    });
   }
 
   public destroy(): void {
@@ -259,7 +264,7 @@ export class GameManager {
     }
   }
 
-  private async handlePlayerJoined(data: { gameId: string; player2: { name: string; id: string } }): void {
+  private async handlePlayerJoined(data: { gameId: string; player2: { name: string; id: string } }) {
     console.log('👋 Handling player joined:', data);
 
     if (this.gameState && this.gameState.gameId === data.gameId) {

@@ -21,12 +21,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   const kv = new KVStorage(platform!);
   const gameStorage = new GameStorage(kv);
 
-  const envInfo = WebSocketNotificationHelper.getEnvironmentInfo(platform);
+  const envInfo = WebSocketNotificationHelper.getEnvironmentInfo(platform!);
   console.log('🌍 Environment detection:', envInfo);
 
   try {
     // STEP 1: Clean up stale games
-    console.log('🧹 Cleaning up open games list...');
     await gameStorage.cleanupOpenGamesList();
 
     // STEP 2: Get all available games
