@@ -138,10 +138,11 @@ export class GameManager {
     const newBoard = this.gameState.board.split('');
     newBoard[position] = symbol;
     this.gameState.board = newBoard.join('');
+    this.callbacks.onGameStateUpdated(this.gameState);
 
-    // Disable moves temporarily
-    //this.isMyTurn = false;
-    //this.callbacks.onTurnChanged(this.isMyTurn);
+    // Disable moves temporarily to prevent duplicate moves
+    this.isMyTurn = false;
+    this.callbacks.onTurnChanged(this.isMyTurn);
 
     try {
       console.log('Making move at position:', position);
@@ -170,11 +171,13 @@ export class GameManager {
     } catch (error) {
       console.error('Error making move:', error);
       this.gameState.board = originalBoard; // Rollback
+
       // Re-enable moves if it was our turn
       const mySymbol = this.getMySymbol();
       this.isMyTurn = mySymbol === 'X' ?
         this.gameState.board.split('').filter(cell => cell !== '_').length % 2 === 0 :
         this.gameState.board.split('').filter(cell => cell !== '_').length % 2 === 1;
+
       this.callbacks.onTurnChanged(this.isMyTurn);
       this.callbacks.onGameStateUpdated(this.gameState);
     }
