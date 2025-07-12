@@ -37,25 +37,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       if (json) return json;
     }
 
-    // STEP 4: No available game found - create new game
-    console.log(`🆕 CREATING NEW GAME: No available games for "${playerName}", creating new game`);
-
-    const newGame = createNewGame(playerName);
-    await gameStorage.saveGame(newGame);
-
-    console.log(`✅ NEW GAME CREATED: ${newGame.gameId}`);
-    console.log(`   Player 1: "${newGame.player1.name}" (${newGame.player1.id})`);
-    console.log(`   Status: ${newGame.status} (waiting for player 2)`);
-
-    return json({
-      gameId: newGame.gameId,
-      player1: newGame.player1.name,
-      player2: null,
-      playerId: newGame.player1.id,
-      playerSymbol: 'X',
-      status: 'PENDING',
-      webSocketNotificationsEnabled: envInfo.webSocketNotificationsAvailable
-    });
+    // No available game found - create new game
+    return createTheNewGame();
 
   } catch (error) {
     console.error('❌ ERROR in /api/game/new:', error);
@@ -118,6 +101,27 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       });
     }
     return null;
+  }
+
+  async function createTheNewGame() {
+    console.log(`🆕 CREATING NEW GAME: No available games for "${playerName}", creating new game`);
+
+    const newGame = createNewGame(playerName);
+    await gameStorage.saveGame(newGame);
+
+    console.log(`✅ NEW GAME CREATED: ${newGame.gameId}`);
+    console.log(`   Player 1: "${newGame.player1.name}" (${newGame.player1.id})`);
+    console.log(`   Status: ${newGame.status} (waiting for player 2)`);
+
+    return json({
+      gameId: newGame.gameId,
+      player1: newGame.player1.name,
+      player2: null,
+      playerId: newGame.player1.id,
+      playerSymbol: 'X',
+      status: 'PENDING',
+      webSocketNotificationsEnabled: envInfo.webSocketNotificationsAvailable
+    });
   }
 };
 
