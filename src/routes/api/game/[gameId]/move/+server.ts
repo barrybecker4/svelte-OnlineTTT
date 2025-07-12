@@ -16,7 +16,7 @@ interface MoveRequest {
 export const POST: RequestHandler = async ({ params, request, platform }) => {
   try {
     const { gameId } = params;
-    const { playerId, cellPosition } = await request.json() as MoveRequest;;
+    const { playerId, cellPosition } = await request.json() as MoveRequest;
 
     const kv = new KVStorage(platform!);
     const gameStorage = new GameStorage(kv);

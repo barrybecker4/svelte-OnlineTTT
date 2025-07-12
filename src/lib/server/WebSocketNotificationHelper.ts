@@ -5,7 +5,7 @@ export class WebSocketNotificationHelper {
   /**
    * Send a player joined notification - SIMPLIFIED
    */
-  static async sendPlayerJoined(gameState: GameState, platform: any): Promise<void> {
+  static async sendPlayerJoined(gameState: GameState, platform: App.Platform): Promise<void> {
     console.log(`🔔 Sending playerJoined notification for game ${gameState.gameId}`);
 
     const message = {

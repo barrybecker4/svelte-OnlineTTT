@@ -14,7 +14,7 @@ interface QuitRequest {
 export const POST: RequestHandler = async ({ params, request, platform }) => {
   try {
     const { gameId } = params;
-    const { playerId, reason = 'RESIGN' } = await request.json() as QuitRequest;;
+    const { playerId, reason = 'RESIGN' } = await request.json() as QuitRequest;
 
     const kv = new KVStorage(platform!);
     const gameStorage = new GameStorage(kv);
