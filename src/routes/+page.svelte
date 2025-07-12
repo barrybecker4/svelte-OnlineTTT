@@ -7,11 +7,12 @@
   import PlayerHistory from '$lib/components/game/PlayerHistory.svelte';
   import GameTimer from '$lib/components/game/GameTimer.svelte';
   import ConnectionStatus from '$lib/components/ConnectionStatus.svelte';
+  import { PlayerHistoryStats } from '$lib/game/PlayerHistoryStats.ts';
   import type { GameState, GameHistory } from '$lib/types/game';
   import { GameManager, type GameManagerCallbacks } from '$lib/game/GameManager';
 
   let gameState: GameState | null = null;
-  let gameHistory: GameHistory | null = null;
+  let formattedHistory: string | null = null;
   let playerName: string = '';
   let playerId: string = '';
   let isMyTurn: boolean = false;
@@ -44,7 +45,11 @@
   }
 
   function onGameHistoryUpdated(newGameHistory: GameHistory | null) {
-    gameHistory = newGameHistory;
+    const opponentName = gameState?.player1.id === playerId
+      ? gameState.player2?.name || null
+      : gameState?.player1.name;
+    formattedHistory =
+      new PlayerHistoryStats(newGameHistory, playerName, opponentName).formattedHistory;
   }
 
   function onTurnChanged(newIsMyTurn: boolean) {
@@ -174,11 +179,9 @@
         <GameTimer {isMyTurn} onTimeout={() => handleEndGame('TIMEOUT')} timerDuration={10} />
       {/if}
 
-      {#if gameHistory}
+      {#if formattedHistory}
         <PlayerHistory
-          history={gameHistory}
-          currentPlayerName={playerName}
-          opponentName={gameState?.player1.id === playerId ? gameState.player2?.name || null : gameState?.player1.name}
+          history={formattedHistory}
         />
       {/if}
     </div>
