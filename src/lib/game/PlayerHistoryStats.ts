@@ -1,4 +1,4 @@
-import type { GameHistory } from '$lib/types/game.ts';
+import type { GameHistory } from '$lib/types/game';
 
 interface WinLossDetails {
   byResignation: number;
@@ -7,7 +7,7 @@ interface WinLossDetails {
 
 export class PlayerHistoryStats {
 
-  public formattedHistory: string | null;
+  public readonly formattedHistory: string | null;
 
   constructor(gameHistory: GameHistory, playerName: string, opponentName: string) {
     this.formattedHistory = this.formatHistory(gameHistory, playerName, opponentName);
@@ -29,7 +29,7 @@ export class PlayerHistoryStats {
     const playerAsO = isPlayer1 ? history.player2AsX : history.player1AsX;
 
     text += PlayerHistoryStats.formatResultLine(
-      'O',
+      'X',
       playerAsX.totalWins,
       playerAsX.totalLosses,
       playerAsX.totalTies,
@@ -37,7 +37,7 @@ export class PlayerHistoryStats {
       playerAsX.losses
     );
     text += PlayerHistoryStats.formatResultLine(
-      'X',
+      'O',
       playerAsO.totalWins,
       playerAsO.totalLosses,
       playerAsO.totalTies,
@@ -48,7 +48,7 @@ export class PlayerHistoryStats {
     return text;
   }
 
-  static formatResultLine(
+  private static formatResultLine(
     symbol: string,
     wins: number,
     losses: number,
@@ -62,7 +62,7 @@ export class PlayerHistoryStats {
     return `As player <strong>${symbol}</strong> you won ${wins}${winParen}, lost ${losses}${lossParen}, and tied ${ties}.<br>`;
   }
 
-  static getWinLossDetails(details: WinLossDetails): string {
+  private static getWinLossDetails(details: WinLossDetails): string {
     if (details.byResignation + details.byTimeout === 0) {
       return '';
     }
@@ -81,12 +81,3 @@ export class PlayerHistoryStats {
     return result;
   }
 }
-
-
-
-
-
-
-
-
-

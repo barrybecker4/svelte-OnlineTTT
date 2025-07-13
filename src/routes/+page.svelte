@@ -181,7 +181,7 @@
 
       {#if formattedHistory}
         <PlayerHistory
-          history={formattedHistory}
+          formattedHistory={formattedHistory}
         />
       {/if}
     </div>
