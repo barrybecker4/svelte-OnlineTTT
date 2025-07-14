@@ -63,12 +63,27 @@ export class GameManager {
 
   public async createNewGame(): Promise<void> {
     try {
-      if (this.gameState && this.playerId) {
-        await this.quitCurrentGame(this.gameState, this.playerId); // quit current if one is active
+      console.log('🎯 createNewGame() called');
+      console.log('  Current gameState:', this.gameState?.gameId, 'status:', this.gameState?.status);
+      console.log('  Current playerId:', this.playerId);
+
+      // Always disconnect WebSocket first to prevent conflicts
+      this.disconnectWebSocket();
+
+      // Only quit if there's an active game that's not already completed
+      if (this.gameState && this.playerId && this.isGameActive(this.gameState)) {
+        console.log('🚪 Quitting active game before creating new one...');
+        const quitResponse = await this.quitCurrentGame(this.gameState, this.playerId);
+        console.log('🚪 Quit response status:', quitResponse.status);
+      } else if (this.gameState) {
+        console.log('🔄 Game already completed, skipping quit step');
+      } else {
+        console.log('🆕 No existing game to quit');
       }
 
-      this.disconnectWebSocket();
+      // Clear state after any quit operation
       this.clearGameState();
+      console.log('🧹 Game state cleared');
 
       // Join/create game using the matching service
       console.log('🎯 Requesting game from matching service...');
@@ -77,7 +92,12 @@ export class GameManager {
       if (!gameJoinResult.success) {
         throw new Error(gameJoinResult.error || 'Failed to create/join game');
       }
-      console.log('✅ Game join successful:', gameJoinResult);
+      console.log('✅ Game join successful:', {
+        gameId: gameJoinResult.gameId,
+        playerId: gameJoinResult.playerId,
+        symbol: gameJoinResult.playerSymbol,
+        status: gameJoinResult.status
+      });
 
       // Set player data from the service result
       this.playerId = gameJoinResult.playerId;
@@ -85,15 +105,24 @@ export class GameManager {
       this.callbacks.onPlayerIdUpdated(this.playerId);
       this.callbacks.onWebSocketStatusChanged(this.webSocketNotificationsEnabled);
 
+      console.log('🔄 Loading game state for gameId:', gameJoinResult.gameId);
       const loadedGameState = await this.gameMatchingService.loadGameState(gameJoinResult.gameId);
       if (!loadedGameState) {
         throw new Error('Failed to load game state');
       }
 
+      console.log('📋 Loaded game state:', {
+        gameId: loadedGameState.gameId,
+        status: loadedGameState.status,
+        player1: loadedGameState.player1?.name,
+        player2: loadedGameState.player2?.name
+      });
+
       this.gameState = loadedGameState;
       this.callbacks.onGameStateUpdated(this.gameState);
       await this.loadGameHistory();
 
+      // Try to connect WebSocket
       if (this.wsClient && this.gameState) {
         console.log('🔌 Connecting WebSocket for game:', this.gameState.gameId);
         try {
@@ -106,11 +135,14 @@ export class GameManager {
         }
       }
 
+      // Set turn state
       if (this.gameState.status === 'ACTIVE') {
         const mySymbol = this.getMySymbol();
         this.isMyTurn = mySymbol === 'X'; // X goes first
+        console.log('🎮 Game is ACTIVE, my symbol:', mySymbol, 'isMyTurn:', this.isMyTurn);
       } else {
         this.isMyTurn = false; // PENDING games can't make moves
+        console.log('⏳ Game is PENDING, waiting for second player');
       }
       this.callbacks.onTurnChanged(this.isMyTurn);
 
@@ -119,6 +151,7 @@ export class GameManager {
       throw error;
     }
   }
+
 
   public async makeMove(position: number): Promise<void> {
     if (!this.gameState || !this.isMyTurn || this.gameState.status !== 'ACTIVE') {
@@ -216,6 +249,17 @@ export class GameManager {
     }
   }
 
+  // private isGameActive(gameState: GameState): boolean {
+  //   return gameState.status === 'ACTIVE' || gameState.status === 'PENDING';
+  // }
+  private isGameActive(gameState: GameState): boolean {
+    // Only consider games that are still in progress
+    const activeStatuses = ['ACTIVE', 'PENDING'];
+    const isActive = activeStatuses.includes(gameState.status);
+    console.log(`🔍 isGameActive check: status=${gameState.status}, isActive=${isActive}`);
+    return isActive;
+  }
+
   private async quitCurrentGame(gameState: GameState, playerId: string, reason = 'RESIGN'): Promise<Response> {
     console.log('Quit:', gameState.gameId);
     return fetch(`/api/game/${gameState.gameId}/quit`, {
@@ -263,6 +307,7 @@ export class GameManager {
     // Check if game ended and play sound
     const gameOver = gameState.status !== 'ACTIVE' && gameState.status !== 'PENDING';
     if (gameOver) {
+      this.loadGameHistory();
       this.playGameOverSound();
     }
 
@@ -291,7 +336,7 @@ export class GameManager {
       this.isMyTurn = mySymbol === 'X'; // X goes first
       this.callbacks.onTurnChanged(this.isMyTurn);
 
-      await this.loadGameHistory();
+      this.loadGameHistory();
     }
   }
 
@@ -378,18 +423,27 @@ export class GameManager {
         this.wsClient.disconnect();
         this.webSocketNotificationsEnabled = false;
         this.callbacks.onWebSocketStatusChanged(false);
+        console.log('🔌 WebSocket disconnected successfully');
       } catch (wsError) {
         console.error('❌ WebSocket disconnect error:', wsError);
       }
+    } else {
+      console.log('🔌 No active WebSocket to disconnect');
     }
   }
 
   private clearGameState(): void {
+    console.log('🧹 Clearing game state...');
+    console.log('  Previous gameState:', this.gameState?.gameId);
+    console.log('  Previous playerId:', this.playerId);
+
     this.gameState = null;
     this.playerId = '';
     this.isMyTurn = false;
     this.callbacks.onGameStateUpdated(this.gameState);
     this.callbacks.onTurnChanged(this.isMyTurn);
     this.callbacks.onPlayerIdUpdated(this.playerId);
+
+    console.log('🧹 Game state cleared successfully');
   }
 }
