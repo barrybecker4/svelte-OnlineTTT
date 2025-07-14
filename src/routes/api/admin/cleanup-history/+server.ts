@@ -30,13 +30,13 @@ export const POST: RequestHandler = async ({ platform, request }) => {
           continue;
         }
 
-        // Check if it has the player1AsX property (assuming if it has this, it has proper structure)
-        const hasPlayer1AsX = historyData.player1AsX &&
-          typeof historyData.player1AsX === 'object' &&
-          'totalWins' in historyData.player1AsX;
+        // Check if it has the player1AsO property (assuming if it has this, it has proper structure)
+        const hasplayer1AsO = historyData.player1AsO &&
+          typeof historyData.player1AsO === 'object' &&
+          'totalWins' in historyData.player1AsO;
 
-        if (!hasPlayer1AsX) {
-          console.log(`🗑️ Deleting history without player1AsX: ${key.name}`);
+        if (!hasplayer1AsO) {
+          console.log(`🗑️ Deleting history without player1AsO: ${key.name}`);
           console.log(`  - Data structure:`, JSON.stringify(historyData, null, 2));
 
           await kv.delete(key.name);
@@ -96,11 +96,11 @@ export const GET: RequestHandler = async ({ platform }) => {
           continue;
         }
 
-        const hasPlayer1AsX = historyData.player1AsX &&
-          typeof historyData.player1AsX === 'object' &&
-          'totalWins' in historyData.player1AsX;
+        const hasplayer1AsO = historyData.player1AsO &&
+          typeof historyData.player1AsO === 'object' &&
+          'totalWins' in historyData.player1AsO;
 
-        if (hasPlayer1AsX) {
+        if (hasplayer1AsO) {
           validCount++;
         } else {
           invalidCount++;
@@ -121,7 +121,7 @@ export const GET: RequestHandler = async ({ platform }) => {
         invalidKeys: invalidKeys.slice(0, 10) // Show first 10 for preview
       },
       usage: {
-        description: 'POST to this endpoint to delete all history entries without player1AsX property',
+        description: 'POST to this endpoint to delete all history entries without player1AsO property',
         curlExample: 'curl -X POST https://your-app.pages.dev/api/admin/cleanup-history'
       }
     });
