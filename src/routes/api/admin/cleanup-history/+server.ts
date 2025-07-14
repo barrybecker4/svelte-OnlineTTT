@@ -3,6 +3,12 @@ import type { RequestHandler } from './$types.ts';
 import { KVStorage } from '$lib/storage/kv.ts';
 import type { GameHistory } from '$lib/types/game.ts';
 
+/**
+ * To preview what will be cleaned up use:
+ * curl https://XXXXXXX.svelte-onlinettt.pages.dev/api/admin/cleanup-history
+ * To do the cleanup:
+ * curl -X POST https://XXXXXX.svelte-onlinettt.pages.dev/api/admin/cleanup-history
+ */
 export const POST: RequestHandler = async ({ platform, request }) => {
   try {
     const kv = new KVStorage(platform!);
