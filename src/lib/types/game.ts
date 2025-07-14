@@ -42,27 +42,22 @@ export interface GameHistory {
   totalEncounters: number;
   totalActive: number;
   player1AsX: PlayerStats;
+  player1AsO: PlayerStats;
   player2AsX: PlayerStats;
+  player2AsO: PlayerStats;
 }
 
-export interface GameHistoryEntry {
-  gameId: string;
-  status: GameStatus;
-  completedAt: number;
+export interface WinLossDetails {
+  byResignation: number;
+  byTimeout: number;
 }
 
 export interface PlayerStats {
   totalWins: number;
   totalLosses: number;
   totalTies: number;
-  wins: {
-    byResignation: number;
-    byTimeout: number;
-  };
-  losses: {
-    byResignation: number;
-    byTimeout: number;
-  };
+  wins: WinLossDetails;
+  losses: WinLossDetails;
 }
 
 export interface OpenGamesList {

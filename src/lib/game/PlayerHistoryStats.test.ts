@@ -106,7 +106,7 @@ describe('PlayerHistoryStats', () => {
           wins: { byResignation: 0, byTimeout: 0 },
           losses: { byResignation: 0, byTimeout: 0 }
         };
-        mockGameHistory.player2AsX = {
+        mockGameHistory.player1AsO = {
           totalWins: 0, totalLosses: 1, totalTies: 1,
           wins: { byResignation: 0, byTimeout: 0 },
           losses: { byResignation: 0, byTimeout: 0 }
@@ -123,12 +123,12 @@ describe('PlayerHistoryStats', () => {
         mockGameHistory.totalEncounters = 3;
         mockGameHistory.player1 = 'Alice';
         mockGameHistory.player2 = 'Bob';
-        mockGameHistory.player1AsX = {
+        mockGameHistory.player2AsX = {
           totalWins: 2, totalLosses: 0, totalTies: 1,
           wins: { byResignation: 1, byTimeout: 0 },
           losses: { byResignation: 0, byTimeout: 0 }
         };
-        mockGameHistory.player2AsX = {
+        mockGameHistory.player2AsO = {
           totalWins: 1, totalLosses: 1, totalTies: 1,
           wins: { byResignation: 0, byTimeout: 1 },
           losses: { byResignation: 0, byTimeout: 1 }
@@ -136,10 +136,7 @@ describe('PlayerHistoryStats', () => {
 
         const stats = new PlayerHistoryStats(mockGameHistory, 'Bob', 'Alice');
 
-        expect(stats.formattedHistory).toContain('You have played <strong>Alice</strong> 3 times');
-        // When Bob is the player, his stats as X come from player2AsX, as O from player1AsX
-        expect(stats.formattedHistory).toContain('As player <strong>X</strong> you won 1');
-        expect(stats.formattedHistory).toContain('As player <strong>O</strong> you won 2');
+        expect(stats.formattedHistory).toBe('You have played <strong>Alice</strong> 3 times in the past.<br>As player <strong>X</strong> you won 2 (1 by resignation), lost 0, and tied 1.<br>As player <strong>O</strong> you won 1 (1 by timeout), lost 1 (1 by timeout), and tied 1.<br>');
       });
     });
 
@@ -151,7 +148,7 @@ describe('PlayerHistoryStats', () => {
           wins: { byResignation: 1, byTimeout: 0 },
           losses: { byResignation: 0, byTimeout: 1 }
         };
-        mockGameHistory.player2AsX = {
+        mockGameHistory.player1AsO = {
           totalWins: 1, totalLosses: 2, totalTies: 2,
           wins: { byResignation: 0, byTimeout: 1 },
           losses: { byResignation: 1, byTimeout: 0 }
@@ -173,7 +170,7 @@ describe('PlayerHistoryStats', () => {
           wins: { byResignation: 1, byTimeout: 1 },
           losses: { byResignation: 0, byTimeout: 0 }
         };
-        mockGameHistory.player2AsX = {
+        mockGameHistory.player1AsO = {
           totalWins: 0, totalLosses: 2, totalTies: 1,
           wins: { byResignation: 0, byTimeout: 0 },
           losses: { byResignation: 1, byTimeout: 1 }
@@ -286,7 +283,7 @@ describe('PlayerHistoryStats', () => {
           wins: { byResignation: 2, byTimeout: 1 },
           losses: { byResignation: 1, byTimeout: 0 }
         },
-        player2AsX: {
+        player1AsO: {
           totalWins: 2, totalLosses: 4, totalTies: 4,
           wins: { byResignation: 0, byTimeout: 2 },
           losses: { byResignation: 2, byTimeout: 1 }
@@ -317,7 +314,7 @@ describe('PlayerHistoryStats', () => {
           wins: { byResignation: 0, byTimeout: 0 },
           losses: { byResignation: 0, byTimeout: 0 }
         },
-        player2AsX: {
+        player1AsO: {
           totalWins: 0, totalLosses: 0, totalTies: 0,
           wins: { byResignation: 0, byTimeout: 0 },
           losses: { byResignation: 0, byTimeout: 0 }

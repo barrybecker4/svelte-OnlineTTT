@@ -1,4 +1,4 @@
-import type { GameHistory, GameHistoryEntry, GameState } from '../types/game.ts';
+import type { GameHistory, GameState } from '../types/game.ts';
 import type { KVStorage } from './kv.ts';
 
 const KEYS = {
@@ -22,14 +22,15 @@ export class HistoryStorage {
       return existing;
     }
 
-    // Return empty history if none exists
-    return {
+    return {  // empty history if none exists
       player1,
       player2,
       totalEncounters: 0,
       totalActive: 0,
       player1AsX: this.createEmptyPlayerStats(),
-      player2AsX: this.createEmptyPlayerStats()
+      player1AsO: this.createEmptyPlayerStats(),
+      player2AsX: this.createEmptyPlayerStats(),
+      player2AsO: this.createEmptyPlayerStats(),
     };
   }
 
@@ -46,76 +47,78 @@ export class HistoryStorage {
 
     const history = await this.getHistory(player1Name, player2Name);
 
-    // Add this game to the history
-    const historyEntry: GameHistoryEntry = {
-      gameId: game.gameId,
-      status: game.status,
-      completedAt: game.lastMoveAt
-    };
-
     // Update stats based on who was X and what happened
-    this.updateHistoryStats(history, game, historyEntry);
-
-    // Save updated history
+    this.updateHistoryStats(history, game);
     await this.kv.put(KEYS.HISTORY(player1Name, player2Name), history);
   }
 
   /**
    * Update history statistics
    */
-  private updateHistoryStats(history: GameHistory, game: GameState, entry: GameHistoryEntry): void {
+  private updateHistoryStats(history: GameHistory, game: GameState): void {
     history.totalEncounters++;
 
-    // Determine which player was X in this game
-    const player1WasX = game.player1.symbol === 'X';
-    const player1Stats = player1WasX ? history.player1AsX : history.player2AsX;
-    const player2Stats = player1WasX ? history.player2AsX : history.player1AsX;
+    // Update stats based on WHO played which symbol and the outcome
+    const xPlayerName = game.player1.symbol === 'X' ? game.player1.name : game.player2!.name;
+    const oPlayerName = game.player1.symbol === 'O' ? game.player1.name : game.player2!.name;
 
+    // Figure out which stats buckets correspond to each player
+    const xPlayerIsHistoryPlayer1 = history.player1 === xPlayerName;
+    const oPlayerIsHistoryPlayer1 = history.player1 === oPlayerName;
+
+    // Get the correct stats buckets
+    // If X player is history.player1, use player1AsX for X stats
+    // And if O player is history.player1, use player2AsX for O stats (because player1 is playing O, not X)
+    const xPlayerStats = xPlayerIsHistoryPlayer1 ? history.player1AsX : history.player2AsX;
+    const oPlayerStats = oPlayerIsHistoryPlayer1 ? history.player1AsO : history.player2AsO;
+
+    console.log('these should not be the same: ', xPlayerStats === oPlayerStats);
     // Update stats based on game outcome
     switch (game.status) {
       case 'TIE':
-        player1Stats.totalTies++;
-        player2Stats.totalTies++;
+        xPlayerStats.totalTies++;
+        oPlayerStats.totalTies++;
         break;
 
       case 'X_WIN':
-        player1Stats.totalWins++;
-        player2Stats.totalLosses++;
+        xPlayerStats.totalWins++;
+        oPlayerStats.totalLosses++;
         break;
 
       case 'X_BY_RESIGN':
-        player1Stats.totalWins++;
-        player1Stats.wins.byResignation++;
-        player2Stats.totalLosses++;
-        player2Stats.losses.byResignation++;
+        xPlayerStats.totalWins++;
+        xPlayerStats.wins.byResignation++;
+        oPlayerStats.totalLosses++;
+        oPlayerStats.losses.byResignation++;
         break;
 
       case 'X_BY_TIMEOUT':
-        player1Stats.totalWins++;
-        player1Stats.wins.byTimeout++;
-        player2Stats.totalLosses++;
-        player2Stats.losses.byTimeout++;
+        xPlayerStats.totalWins++;
+        xPlayerStats.wins.byTimeout++;
+        oPlayerStats.totalLosses++;
+        oPlayerStats.losses.byTimeout++;
         break;
 
       case 'O_WIN':
-        player1Stats.totalLosses++;
-        player2Stats.totalWins++;
+        oPlayerStats.totalWins++;
+        xPlayerStats.totalLosses++;
         break;
 
       case 'O_BY_RESIGN':
-        player1Stats.totalLosses++;
-        player1Stats.losses.byResignation++;
-        player2Stats.totalWins++;
-        player2Stats.wins.byResignation++;
+        oPlayerStats.totalWins++;
+        oPlayerStats.wins.byResignation++;
+        xPlayerStats.totalLosses++;
+        xPlayerStats.losses.byResignation++;
         break;
 
       case 'O_BY_TIMEOUT':
-        player1Stats.totalLosses++;
-        player1Stats.losses.byTimeout++;
-        player2Stats.totalWins++;
-        player2Stats.wins.byTimeout++;
+        oPlayerStats.totalWins++;
+        oPlayerStats.wins.byTimeout++;
+        xPlayerStats.totalLosses++;
+        xPlayerStats.losses.byTimeout++;
         break;
     }
+    console.log(xPlayerIsHistoryPlayer1, 'xPlayerStats=', xPlayerStats, ' ', oPlayerIsHistoryPlayer1, ' oPlayerStats=', oPlayerStats);
   }
 
   private createEmptyPlayerStats() {

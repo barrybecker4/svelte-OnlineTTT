@@ -1,9 +1,6 @@
-import type { GameHistory } from '$lib/types/game';
+import type { GameHistory, WinLossDetails } from '$lib/types/game';
 
-interface WinLossDetails {
-  byResignation: number;
-  byTimeout: number;
-}
+
 
 export class PlayerHistoryStats {
 
@@ -26,7 +23,7 @@ export class PlayerHistoryStats {
     // Determine which stats apply to current player
     const isPlayer1 = history.player1 === playerName;
     const playerAsX = isPlayer1 ? history.player1AsX : history.player2AsX;
-    const playerAsO = isPlayer1 ? history.player2AsX : history.player1AsX;
+    const playerAsO = isPlayer1 ? history.player1AsO : history.player2AsO;
 
     text += PlayerHistoryStats.formatResultLine(
       'X',
