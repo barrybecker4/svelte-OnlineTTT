@@ -1,7 +1,5 @@
 import type { GameHistory, WinLossDetails } from '$lib/types/game';
 
-
-
 export class PlayerHistoryStats {
 
   public readonly formattedHistory: string | null;
@@ -25,6 +23,9 @@ export class PlayerHistoryStats {
     const playerAsX = (isPlayer1 ? history.player1AsX : history.player2AsX) || this.createEmptyPlayerStats();
     const playerAsO = (isPlayer1 ? history.player1AsO : history.player2AsO) || this.createEmptyPlayerStats();
 
+    if (!playerAsX || !playerAsO) {
+      throw new Error(`playerAsX = ${playerAsX}, playerAsO = ${playerAsO}`);
+    }
     text += PlayerHistoryStats.formatResultLine(
       'X',
       playerAsX.totalWins,
