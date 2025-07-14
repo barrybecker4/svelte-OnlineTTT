@@ -14,17 +14,6 @@ export class TestUtils {
   }
 
   /**
-   * Generate a unique test identifier for this test run
-   */
-  static generateTestId(testName: string): string {
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000);
-    const sanitizedTestName = testName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
-
-    return `${sanitizedTestName}_${timestamp}_${random}`;
-  }
-
-  /**
    * Setup player with unique name and clean localStorage
    */
   static async setupPlayer(page: any, playerName: string): Promise<void> {

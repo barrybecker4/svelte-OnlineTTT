@@ -79,22 +79,19 @@
   }
 
   async function handleNewGame(): Promise<void> {
-    if (!gameManager) return;
     await gameManager.createNewGame();
   }
 
   async function handleMakeMove(position: number): Promise<void> {
-    if (!gameManager) return;
     await gameManager.makeMove(position);
   }
 
   async function handleEndGame(reason: 'RESIGN' | 'TIMEOUT'): Promise<void> {
-    if (!gameManager) return;
     await gameManager.endGame(reason);
   }
 
   function handleRestart(): void {
-    handleNewGame();
+    gameManager.createNewGame();
   }
 
   function getOpponentName(): string {
@@ -109,11 +106,8 @@
   }
 
   function getMySymbol(): string {
-    if (!gameState) return 'X';
-    if (gameState.status === 'PENDING') return 'X';
-    if (gameState.lastPlayer === '') return 'X';
-    if (!gameState.player1) {
-      throw new Error("gameState did not contain player1:", gameState);
+    if (!gameState || gameState.status === 'PENDING' || gameState.lastPlayer === '') {
+      return 'X';
     }
     return gameState.player1?.id === playerId ? 'X' : 'O';
   }
