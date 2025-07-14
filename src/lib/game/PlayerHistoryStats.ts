@@ -22,8 +22,8 @@ export class PlayerHistoryStats {
 
     // Determine which stats apply to current player
     const isPlayer1 = history.player1 === playerName;
-    const playerAsX = isPlayer1 ? history.player1AsX : history.player2AsX;
-    const playerAsO = isPlayer1 ? history.player1AsO : history.player2AsO;
+    const playerAsX = (isPlayer1 ? history.player1AsX : history.player2AsX) || this.createEmptyPlayerStats();
+    const playerAsO = (isPlayer1 ? history.player1AsO : history.player2AsO) || this.createEmptyPlayerStats();
 
     text += PlayerHistoryStats.formatResultLine(
       'X',
@@ -76,5 +76,21 @@ export class PlayerHistoryStats {
 
     result += parts.join(', ') + ')';
     return result;
+  }
+
+  private createEmptyPlayerStats() {
+    return {
+      totalWins: 0,
+      totalLosses: 0,
+      totalTies: 0,
+      wins: {
+        byResignation: 0,
+        byTimeout: 0
+      },
+      losses: {
+        byResignation: 0,
+        byTimeout: 0
+      }
+    };
   }
 }
