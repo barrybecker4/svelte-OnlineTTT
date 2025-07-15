@@ -9,7 +9,7 @@ import type { GameHistory } from '$lib/types/game.ts';
  * To do the cleanup:
  * curl -X POST https://XXXXXX.svelte-onlinettt.pages.dev/api/admin/cleanup-history
  */
-export const POST: RequestHandler = async ({ platform, request }) => {
+export const POST: RequestHandler = async ({ platform }) => {
   try {
     const kv = new KVStorage(platform!);
 
@@ -26,7 +26,7 @@ export const POST: RequestHandler = async ({ platform, request }) => {
 
     for (const key of historyKeys.keys) {
       try {
-        const historyData:GameHistory = await kv.get(key.name) as GameHistory;
+        const historyData: GameHistory = (await kv.get(key.name)) as GameHistory;
 
         if (!historyData) {
           console.log(`⚠️ Key ${key.name} has no data, deleting...`);
@@ -37,11 +37,10 @@ export const POST: RequestHandler = async ({ platform, request }) => {
         }
 
         // Check if it has the player1AsO property (assuming if it has this, it has proper structure)
-        const hasplayer1AsO = historyData.player1AsO &&
-          typeof historyData.player1AsO === 'object' &&
-          'totalWins' in historyData.player1AsO;
+        const hasPlayer1AsO =
+          historyData.player1AsO && typeof historyData.player1AsO === 'object' && 'totalWins' in historyData.player1AsO;
 
-        if (!hasplayer1AsO) {
+        if (!hasPlayer1AsO) {
           console.log(`🗑️ Deleting history without player1AsO: ${key.name}`);
           console.log(`  - Data structure:`, JSON.stringify(historyData, null, 2));
 
@@ -72,13 +71,15 @@ export const POST: RequestHandler = async ({ platform, request }) => {
       deletedKeys,
       errors: errors.length > 0 ? errors : undefined
     });
-
-  } catch (error) {
+  } catch (error: { message: string }) {
     console.error('❌ Error during history cleanup:', error);
-    return json({
-      success: false,
-      error: error.message
-    }, { status: 500 });
+    return json(
+      {
+        success: false,
+        error: error.message
+      },
+      { status: 500 }
+    );
   }
 };
 
@@ -94,7 +95,7 @@ export const GET: RequestHandler = async ({ platform }) => {
 
     for (const key of historyKeys.keys) {
       try {
-        const historyData = await kv.get(key.name);
+        const historyData: GameHistory = await kv.get(key.name) as GameHistory;
 
         if (!historyData) {
           invalidCount++;
@@ -131,7 +132,7 @@ export const GET: RequestHandler = async ({ platform }) => {
         curlExample: 'curl -X POST https://your-app.pages.dev/api/admin/cleanup-history'
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     return json({
       available: true,
       error: error.message
