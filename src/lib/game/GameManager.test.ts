@@ -1,8 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { GameManager, type GameManagerCallbacks } from './GameManager';
-import type { GameState, GameHistory } from '$lib/types/game';
+import type { GameState, GameHistory, PlayerStats } from '$lib/types/game';
 
-// Mock modules
 vi.mock('$lib/websocket/client', () => ({
   GameWebSocketClient: vi.fn().mockImplementation(() => ({
     connect: vi.fn(),
@@ -28,7 +27,6 @@ vi.mock('$lib/audio/Audio', () => ({
   }
 }));
 
-// Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
@@ -43,7 +41,6 @@ describe('GameManager', () => {
   let mockMatchingService: any;
   let mockGameAudio: any;
 
-  // Test data
   const testPlayerName = 'TestPlayer';
   const testPlayerId = 'player-123';
   const testGameId = 'game-456';
@@ -57,7 +54,7 @@ describe('GameManager', () => {
       name: testPlayerName,
       symbol: 'X'
     },
-    player2: null,
+    player2: undefined,
     lastPlayer: '',
     createdAt: Date.now(),
     lastMoveAt: Date.now()
@@ -76,9 +73,12 @@ describe('GameManager', () => {
   const mockGameHistory: GameHistory = {
     player1: testPlayerName,
     player2: 'TestPlayer2',
-    games: [],
-    totalGames: 0,
-    wins: { player1: 0, player2: 0, ties: 0 }
+    totalEncounters: 0,
+    totalActive: 0,
+    player1AsX: {totalWins: 0, totalLosses: 0, totalTies: 0, wins: { byResignation: 0, byTimeout: 0 }, losses: { byResignation: 0, byTimeout: 0 }},
+    player1AsO: {totalWins: 0, totalLosses: 0, totalTies: 0, wins: { byResignation: 0, byTimeout: 0 }, losses: { byResignation: 0, byTimeout: 0 }},
+    player2AsX: {totalWins: 0, totalLosses: 0, totalTies: 0, wins: { byResignation: 0, byTimeout: 0 }, losses: { byResignation: 0, byTimeout: 0 }},
+    player2AsO: {totalWins: 0, totalLosses: 0, totalTies: 0, wins: { byResignation: 0, byTimeout: 0 }, losses: { byResignation: 0, byTimeout: 0 }},
   };
 
   beforeEach(async () => {
@@ -86,7 +86,6 @@ describe('GameManager', () => {
     console.log = vi.fn();
     console.error = vi.fn();
 
-    // Setup mock callbacks
     mockCallbacks = {
       onGameStateUpdated: vi.fn(),
       onGameHistoryUpdated: vi.fn(),
@@ -95,7 +94,6 @@ describe('GameManager', () => {
       onWebSocketStatusChanged: vi.fn()
     };
 
-    // Clear all mocks
     vi.clearAllMocks();
     mockFetch.mockClear();
 
@@ -210,7 +208,6 @@ describe('GameManager', () => {
     });
 
     test('should quit current game before creating new one', async () => {
-      // Setup existing game state
       (gameManager as any).gameState = mockGameState;
       (gameManager as any).playerId = testPlayerId;
 
