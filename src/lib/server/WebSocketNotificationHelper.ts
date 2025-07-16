@@ -1,42 +1,26 @@
 import type { GameState } from '../types/game.js';
 
+// Update with your deployed worker URL
+const WORKER_URL = 'https://svelte-ttt-websocket.barrybecker4.workers.dev';
+
+const LOCAL_URLS = [
+  'http://localhost:8787',
+  'http://127.0.0.1:8787',
+];
+
 export class WebSocketNotificationHelper {
 
   /**
-   * Send a player joined notification - SIMPLIFIED
+   * Send a player joined notification
    */
   static async sendPlayerJoined(gameState: GameState, platform: App.Platform): Promise<void> {
     console.log(`🔔 Sending playerJoined notification for game ${gameState.gameId}`);
-
-    const message = {
-      type: 'playerJoined',
-      gameId: gameState.gameId,
-      data: {
-        gameId: gameState.gameId,
-        status: gameState.status,
-        player1: {
-          id: gameState.player1.id,
-          name: gameState.player1.name,
-          symbol: 'X'
-        },
-        player2: gameState.player2 ? {
-          id: gameState.player2.id,
-          name: gameState.player2.name,
-          symbol: 'O'
-        } : null,
-        nextPlayer: 'X', // Game just started, X goes first
-        board: gameState.board,
-        lastPlayer: gameState.lastPlayer,
-        lastMoveAt: gameState.lastMoveAt
-      },
-      timestamp: Date.now()
-    };
-
+    const message = this.createMessage(gameState, 'playerJoined', 'X');
     await this.sendNotification(gameState.gameId, message, platform);
   }
 
   /**
-   * Send a game update notification - SIMPLIFIED
+   * Send a game update notification
    */
   static async sendGameUpdate(gameState: GameState, platform: App.Platform): Promise<void> {
     console.log(`🔔 Sending gameUpdate notification for game ${gameState.gameId}`);
@@ -44,74 +28,52 @@ export class WebSocketNotificationHelper {
     const nextPlayer = gameState.lastPlayer === '' ? 'X' :
       gameState.lastPlayer === 'X' ? 'O' : 'X';
 
-    const message = {
-      type: 'gameUpdate',
-      gameId: gameState.gameId,
-      data: {
-        gameId: gameState.gameId,
-        status: gameState.status,
-        player1: {
-          id: gameState.player1.id,
-          name: gameState.player1.name,
-          symbol: 'X'
-        },
-        player2: gameState.player2 ? {
-          id: gameState.player2.id,
-          name: gameState.player2.name,
-          symbol: 'O'
-        } : null,
-        nextPlayer,
-        board: gameState.board,
-        lastPlayer: gameState.lastPlayer,
-        lastMoveAt: gameState.lastMoveAt
-      },
-      timestamp: Date.now()
-    };
-
+    const message = this.createMessage(gameState, 'gameUpdate', nextPlayer);
     await this.sendNotification(gameState.gameId, message, platform);
   }
 
+  private static createMessage(gameState: GameState, type: string, nextPlayer: string) {
+    return {
+      type,
+      gameId: gameState.gameId,
+      data: {
+        ...gameState,
+        nextPlayer
+      },
+      timestamp: Date.now()
+    };
+  }
+
   /**
-   * Simple HTTP POST to WebSocket worker with retry and fallback
+   * HTTP POST to WebSocket worker with retry and fallback
    */
   private static async sendNotification(gameId: string, message: any, platform: App.Platform): Promise<void> {
-    const isLocalDevelopment = !platform?.env?.WEBSOCKET_HIBERNATION_SERVER;
+    const isLocalDevelopment = this.isLocalDev(platform);
 
     if (!isLocalDevelopment) {
-      // Production: Use deployed worker
-      try {
-        const workerUrl = 'https://svelte-ttt-websocket.barrybecker4.workers.dev'; // Update with your worker URL
-        await this.sendToWorker(workerUrl, gameId, message);
+      if (await this.sendMessageToWorker(WORKER_URL, message, gameId)) {
         return;
-      } catch (error) {
-        console.error(`❌ Failed to send to production worker:`, error);
-        return; // Don't continue to local fallback in production
       }
     }
 
-    // Local development: Try multiple approaches
-    const localUrls = [
-      'http://localhost:8787',
-      'http://127.0.0.1:8787',
-      'http://0.0.0.0:8787'
-    ];
-
-    for (const url of localUrls) {
-      try {
-        console.log(`📡 Trying to send ${message.type} notification to ${url}/notify`);
-        await this.sendToWorker(url, gameId, message);
-        console.log(`✅ Successfully sent notification via ${url}`);
-        return; // Success, exit
-      } catch (error) {
-        console.log(`❌ Failed to send via ${url}:`, error.message);
-        // Continue to next URL
+    for (const url of LOCAL_URLS) {
+      if (await this.sendMessageToWorker(url, message, gameId)) {
+        return;
       }
     }
 
-    // If all local URLs fail, warn but don't crash
-    console.warn(`⚠️ Could not send WebSocket notification for game ${gameId}. WebSocket worker might not be running.`);
-    console.warn(`⚠️ Game will still work, but real-time updates might be delayed.`);
-    console.warn(`⚠️ Make sure WebSocket worker is running: cd websocket-worker && npm run dev`);
+    this.logWarning(gameId);
+  }
+
+  private static async sendMessageToWorker(workerUrl: string, message: any, gameId: string): Promise<boolean> {
+    try {
+      await this.sendToWorker(workerUrl, gameId, message);
+      console.log(`✅ Successfully sent notification via ${workerUrl}`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Failed to send to worker:`, error);
+      return false;
+    }
   }
 
   /**
@@ -126,7 +88,7 @@ export class WebSocketNotificationHelper {
       },
       body: JSON.stringify({ gameId, message }),
       // Add timeout for local development
-      signal: AbortSignal.timeout(5000) // 5 second timeout
+      signal: AbortSignal.timeout(4000)
     });
 
     if (!response.ok) {
@@ -138,11 +100,16 @@ export class WebSocketNotificationHelper {
     console.log(`✅ ${message.type} notification sent successfully to ${workerUrl}:`, result);
   }
 
+  private static logWarning(gameId: string) {
+    console.warn(`⚠️ Could not send WebSocket notification for game ${gameId}. WebSocket worker might not be running.`);
+    console.warn(`⚠️ Make sure WebSocket worker is running: cd websocket-worker && npm run dev`);
+  }
+
   /**
    * Simple environment detection
    */
   static getEnvironmentInfo(platform: App.Platform) {
-    const isLocalDevelopment = !platform?.env?.WEBSOCKET_HIBERNATION_SERVER;
+    const isLocalDevelopment = this.isLocalDev(platform);
     return {
       isLocalDevelopment,
       webSocketNotificationsAvailable: true // Always true since we just use HTTP
@@ -153,10 +120,7 @@ export class WebSocketNotificationHelper {
    * Health check for WebSocket worker
    */
   static async checkWebSocketWorker(): Promise<boolean> {
-    const urls = [
-      'http://localhost:8787/health',
-      'http://127.0.0.1:8787/health'
-    ];
+    const urls = LOCAL_URLS.map(url => url + '/health');
 
     for (const url of urls) {
       try {
@@ -168,11 +132,15 @@ export class WebSocketNotificationHelper {
           return true;
         }
       } catch (error) {
-        // Ignore errors, try next URL
+        console.log('Could not reach websocket worker.', error);
       }
     }
 
     console.warn(`⚠️ WebSocket worker not detected. Start it with: cd websocket-worker && npm run dev`);
     return false;
+  }
+
+  private static isLocalDev(platform: App.Platform): boolean {
+    return !platform?.env?.WEBSOCKET_HIBERNATION_SERVER;
   }
 }

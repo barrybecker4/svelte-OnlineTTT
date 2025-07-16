@@ -1,4 +1,4 @@
-import type { GameStatus, MoveResult, PlayerSymbol } from '../types/game.ts';
+import type {  GameStatus, MoveResult, PlayerSymbol } from '../types/game.ts';
 
 /**
  * Determines the new board state after a player makes a move
@@ -14,12 +14,19 @@ export function makeMove(playerSymbol: PlayerSymbol, cellPos: number, currentBoa
 
   // Make the move
   const newBoard = currentBoard.substring(0, cellPos) + playerSymbol + currentBoard.substring(cellPos + 1);
-
-  // Check for win conditions
   const winningPositions = checkForWin(newBoard);
-  const isTie = !winningPositions && !hasEmptyPositions(newBoard);
+  const status = determineGameStatus(winningPositions, newBoard);
 
-  // Determine game status
+  return {
+    status,
+    winningPositions,
+    boardData: newBoard,
+    nextPlayer: playerSymbol === 'X' ? 'O' : 'X'
+  };
+}
+
+function determineGameStatus(winningPositions: number[] | null, newBoard: string): GameStatus {
+  const isTie = !winningPositions && !hasEmptyPositions(newBoard);
   let status: GameStatus;
   if (isTie) {
     status = 'TIE';
@@ -28,13 +35,7 @@ export function makeMove(playerSymbol: PlayerSymbol, cellPos: number, currentBoa
   } else {
     status = 'ACTIVE';
   }
-
-  return {
-    status,
-    winningPositions,
-    boardData: newBoard,
-    nextPlayer: playerSymbol === 'X' ? 'O' : 'X'
-  };
+  return status
 }
 
 /**

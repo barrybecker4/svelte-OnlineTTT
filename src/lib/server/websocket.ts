@@ -66,18 +66,18 @@ export class WebSocketHibernationServer implements DurableObject {
     try {
       const body = await request.json() as { gameId: string; message: GameMessage };
       const { gameId, message } = body;
-      
+
       await this.sessionManager.broadcastToGame(gameId, message);
-      
+
       return new Response(JSON.stringify({ success: true }), {
         headers: { 'Content-Type': 'application/json' }
       });
     } catch (error) {
       console.error('WebSocket notification error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: 'Failed to send notification',
-        details: errorMessage 
+        details: errorMessage
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -96,11 +96,11 @@ export class WebSocketHibernationServer implements DurableObject {
           timestamp: Date.now()
         });
         break;
-        
+
       case 'unsubscribe':
         this.sessionManager.unsubscribeFromGame(sessionId, message.gameId);
         break;
-        
+
       case 'ping':
         this.sessionManager.sendToSession(sessionId, {
           type: 'pong',
@@ -109,7 +109,7 @@ export class WebSocketHibernationServer implements DurableObject {
           timestamp: Date.now()
         });
         break;
-        
+
       default:
         console.log('Unknown message type:', message.type);
     }
@@ -118,8 +118,5 @@ export class WebSocketHibernationServer implements DurableObject {
   private async handleDisconnect(sessionId: string) {
     console.log(`Session ${sessionId} disconnected`);
     this.sessionManager.removeSession(sessionId);
-    
-    // Optional: Notify game service about player disconnect
-    // This could trigger game termination logic if needed
   }
 }

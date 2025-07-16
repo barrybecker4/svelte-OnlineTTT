@@ -104,7 +104,7 @@ npx playwright test --headed
 
 **Run specific test file**
 ```bash
-npx playwright test practical-tests.test.ts --headed
+npx playwright test play-newgame-play.test.ts --headed
 ```
 
 The E2E tests will automatically start the development server, run tests against real browser instances, and shut down when complete. Tests include:

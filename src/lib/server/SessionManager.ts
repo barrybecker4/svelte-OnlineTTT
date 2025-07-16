@@ -1,14 +1,8 @@
 import type { GameMessage } from '../types/websocket.js';
 
-export interface SessionInfo {
-  sessionId: string;
-  gameId?: string;
-  playerId?: string;
-}
-
 export class SessionManager {
-  private sessions: Map<string, WebSocket> = new Map();
-  private gameSubscriptions: Map<string, Set<string>> = new Map();
+  private sessions: Map<string, WebSocket> = new Map(); // session id to websocket
+  private gameSubscriptions: Map<string, Set<string>> = new Map(); // gameId to subscribers
   private storage: DurableObjectStorage;
 
   constructor(storage: DurableObjectStorage) {
@@ -119,13 +113,5 @@ export class SessionManager {
 
   generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  getSessionCount(): number {
-    return this.sessions.size;
-  }
-
-  getActiveGameCount(): number {
-    return this.gameSubscriptions.size;
   }
 }

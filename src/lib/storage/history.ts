@@ -72,7 +72,6 @@ export class HistoryStorage {
     const xPlayerStats = xPlayerIsHistoryPlayer1 ? history.player1AsX : history.player2AsX;
     const oPlayerStats = oPlayerIsHistoryPlayer1 ? history.player1AsO : history.player2AsO;
 
-    console.log('these should not be the same: ', xPlayerStats === oPlayerStats);
     // Update stats based on game outcome
     switch (game.status) {
       case 'TIE':

@@ -15,7 +15,7 @@ interface GameJoinResult {
  * Game matching service that handles the core logic of finding or creating games for players.
  */
 export class GameMatchingService {
-  private baseUrl: string;
+  private readonly baseUrl: string;
 
   constructor(baseUrl: string = '') {
     this.baseUrl = baseUrl;
@@ -23,24 +23,15 @@ export class GameMatchingService {
 
   /**
    * Find an available game or create a new one for the player
-   * This encapsulates all the matching logic in one place
+   * This encapsulates the matching logic in one place
    */
   async findOrCreateGame(playerName: string): Promise<GameJoinResult> {
     if (!playerName?.trim()) {
-      return {
-        success: false,
-        gameId: '',
-        playerId: '',
-        playerSymbol: 'X',
-        status: 'PENDING',
-        webSocketNotificationsEnabled: false,
-        error: 'Player name is required'
-      };
+      return this.createFailedResult('Player name is required');
     }
 
     try {
       console.log('🎯 Finding or creating game for player:', playerName);
-
       const response = await fetch(`${this.baseUrl}/api/game/new`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,39 +40,14 @@ export class GameMatchingService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        return {
-          success: false,
-          gameId: '',
-          playerId: '',
-          playerSymbol: 'X',
-          status: 'PENDING',
-          webSocketNotificationsEnabled: false,
-          error: `Failed to create/join game: ${errorText}`
-        };
+        return this.createFailedResult(`Failed to create/join game: ${errorText}`);
       }
 
       const data = await response.json() as GameCreationResponse;
 
-      // Validate the response has required fields
       if (!data.gameId || !data.playerId || !data.playerSymbol) {
-        return {
-          success: false,
-          gameId: '',
-          playerId: '',
-          playerSymbol: 'X',
-          status: 'PENDING',
-          webSocketNotificationsEnabled: false,
-          error: 'Invalid response from server'
-        };
+        return this.createFailedResult('Invalid response from server');
       }
-
-      console.log('✅ Game join successful:', {
-        gameId: data.gameId,
-        playerId: data.playerId,
-        symbol: data.playerSymbol,
-        status: data.status,
-        webSocketNotificationsEnabled: data.webSocketNotificationsEnabled
-      });
 
       return {
         success: true,
@@ -93,17 +59,20 @@ export class GameMatchingService {
       };
 
     } catch (error) {
-      console.error('❌ Error in game matching:', error);
-      return {
-        success: false,
-        gameId: '',
-        playerId: '',
-        playerSymbol: 'X',
-        status: 'PENDING',
-        webSocketNotificationsEnabled: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
+      return this.createFailedResult(error instanceof Error ? error.message : 'Unknown error');
     }
+  }
+
+  private createFailedResult(message: string): GameJoinResult {
+    return {
+      success: false,
+      gameId: '',
+      playerId: '',
+      playerSymbol: 'X',
+      status: 'PENDING',
+      webSocketNotificationsEnabled: false,
+      error: message,
+    };
   }
 
   /**
