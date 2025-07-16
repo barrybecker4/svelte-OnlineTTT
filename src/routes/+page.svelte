@@ -91,10 +91,9 @@
 
   function onWebSocketStatusChanged(enabled: boolean) {
     webSocketNotificationsEnabled = enabled;
-    wsClient = gameManager?.getWebSocketClient() || null;
   }
 
-  function initializeGameManager() {
+  function initializeGameManager(): void {
     const callbacks: GameManagerCallbacks = {
       onGameStateUpdated,
       onGameHistoryUpdated,
