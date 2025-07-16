@@ -70,16 +70,7 @@ export class GameManager {
       // Always disconnect WebSocket first to prevent conflicts
       this.disconnectWebSocket();
 
-      // Only quit if there's an active game that's not already completed
-      if (this.gameState && this.playerId && this.isGameActive(this.gameState)) {
-        console.log('🚪 Quitting active game before creating new one...');
-        const quitResponse = await this.quitCurrentGame(this.gameState, this.playerId);
-        console.log('🚪 Quit response status:', quitResponse.status);
-      } else if (this.gameState) {
-        console.log('🔄 Game already completed, skipping quit step');
-      } else {
-        console.log('🆕 No existing game to quit');
-      }
+      await this.quitIfActiveGame();
 
       // Clear state after any quit operation
       this.clearGameState();
@@ -122,7 +113,6 @@ export class GameManager {
         }
       }
 
-      // Set turn state
       if (this.gameState.status === 'ACTIVE') {
         const mySymbol = this.getMySymbol();
         this.isMyTurn = mySymbol === 'X'; // X goes first
@@ -139,6 +129,18 @@ export class GameManager {
     }
   }
 
+  // Only quit if there's an active game that's not already completed
+  private async quitIfActiveGame() {
+    if (this.gameState && this.playerId && this.isGameActive(this.gameState)) {
+      console.log('🚪 Quitting active game before creating new one...');
+      const quitResponse = await this.quitCurrentGame(this.gameState, this.playerId);
+      console.log('🚪 Quit response status:', quitResponse.status);
+    } else if (this.gameState) {
+      console.log('🔄 Game already completed, skipping quit step');
+    } else {
+      console.log('🆕 No existing game to quit');
+    }
+  }
 
   public async makeMove(position: number): Promise<void> {
     if (!this.gameState || !this.isMyTurn || this.gameState.status !== 'ACTIVE') {
