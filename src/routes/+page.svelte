@@ -35,47 +35,13 @@
   });
 
   function setupBrowserQuitHandler(): () => void {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // Only quit if we have an active game
-      console.log("In handleBeforeUnload: gameState", gameState, " playerId=", playerId);
-      if (gameManager && gameState && playerId) {
-        const isGameActive = gameState.status === 'ACTIVE' || gameState.status === 'PENDING';
-
-        if (isGameActive) {
-          console.log('🚪 Browser closing/refreshing - sending quit request');
-
-          // Send quit request synchronously before the page unloads
-          const quitData = JSON.stringify({
-            playerId: playerId,
-            reason: 'RESIGN'
-          });
-
-          try {
-            // sendBeacon is more reliable during page unload than fetch
-            const success = navigator.sendBeacon(`/api/game/${gameState.gameId}/quit`, quitData);
-            console.log('📡 Quit beacon sent:', success);
-          } catch (error) {
-            console.error('❌ Beacon failed, trying fetch:', error);
-            // Fallback to synchronous fetch if sendBeacon fails
-            fetch(`/api/game/${gameState.gameId}/quit`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: quitData,
-              keepalive: true // Keep request alive during page unload
-            }).catch(err => {
-              console.error('❌ Failed to send quit request:', err);
-            });
-          }
-        }
-      }
-    };
 
     const handleUnload = () => {
       if (gameManager && gameState && playerId) {
         const isGameActive = gameState.status === 'ACTIVE' || gameState.status === 'PENDING';
 
         if (isGameActive) {
-          console.log('🚪 Page unloading - sending quit request');
+          console.log('🚪Sending quit request');
           const quitData = JSON.stringify({
             playerId: playerId,
             reason: 'RESIGN'
@@ -87,12 +53,10 @@
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('unload', handleUnload);
+    window.addEventListener('beforeunload', handleUnload);
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('unload', handleUnload);
+      window.removeEventListener('beforeunload', handleUnload);
     };
   }
 
