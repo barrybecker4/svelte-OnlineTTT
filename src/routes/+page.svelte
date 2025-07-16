@@ -25,7 +25,7 @@
     if (browser) {
       playerName = getPlayerName();
       initializeGameManager();
-      //cleanupBrowserHandlers = setupBrowserQuitHandler();
+      cleanupBrowserHandlers = setupBrowserQuitHandler();
     }
   });
 
@@ -37,6 +37,7 @@
   function setupBrowserQuitHandler(): () => void {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       // Only quit if we have an active game
+      console.log("In handleBeforeUnload: gameState", gameState, " playerId=", playerId);
       if (gameManager && gameState && playerId) {
         const isGameActive = gameState.status === 'ACTIVE' || gameState.status === 'PENDING';
 
@@ -87,11 +88,11 @@
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('unload', handleUnload);
+    //window.addEventListener('unload', handleUnload);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('unload', handleUnload);
+      //window.removeEventListener('unload', handleUnload);
     };
   }
 
