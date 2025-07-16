@@ -45,6 +45,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     return json({ error: 'Failed to create or join game' }, { status: 500 });
   }
 
+
   function findAvailableGame(openGames: GameState[]): GameState {
     console.log(`🔍 Looking for available game for "${playerName}"...`);
 

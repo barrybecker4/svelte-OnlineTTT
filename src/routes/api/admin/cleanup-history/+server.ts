@@ -9,7 +9,7 @@ import type { GameHistory } from '$lib/types/game.ts';
  * To do the cleanup:
  * curl -X POST https://XXXXXX.svelte-onlinettt.pages.dev/api/admin/cleanup-history
  */
-export const POST: RequestHandler = async ({ platform }) => {
+export const POST: RequestHandler = async ({ platform, request }) => {
   try {
     const kv = new KVStorage(platform!);
 
@@ -26,7 +26,7 @@ export const POST: RequestHandler = async ({ platform }) => {
 
     for (const key of historyKeys.keys) {
       try {
-        const historyData: GameHistory = (await kv.get(key.name)) as GameHistory;
+        const historyData:GameHistory = await kv.get(key.name) as GameHistory;
 
         if (!historyData) {
           console.log(`⚠️ Key ${key.name} has no data, deleting...`);
@@ -71,15 +71,13 @@ export const POST: RequestHandler = async ({ platform }) => {
       deletedKeys,
       errors: errors.length > 0 ? errors : undefined
     });
-  } catch (error: { message: string }) {
+
+  } catch (error) {
     console.error('❌ Error during history cleanup:', error);
-    return json(
-      {
-        success: false,
-        error: error.message
-      },
-      { status: 500 }
-    );
+    return json({
+      success: false,
+      error: error.message
+    }, { status: 500 });
   }
 };
 
@@ -132,7 +130,7 @@ export const GET: RequestHandler = async ({ platform }) => {
         curlExample: 'curl -X POST https://your-app.pages.dev/api/admin/cleanup-history'
       }
     });
-  } catch (error: any) {
+  } catch (error) {
     return json({
       available: true,
       error: error.message
