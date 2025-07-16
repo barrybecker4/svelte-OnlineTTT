@@ -25,7 +25,7 @@
     if (browser) {
       playerName = getPlayerName();
       initializeGameManager();
-      cleanupBrowserHandlers = setupBrowserQuitHandler();
+      //cleanupBrowserHandlers = setupBrowserQuitHandler();
     }
   });
 
