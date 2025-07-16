@@ -25,13 +25,13 @@
     if (browser) {
       playerName = getPlayerName();
       await initializeGameManager();
-      cleanupBrowserHandlers = setupBrowserQuitHandler();
+      //cleanupBrowserHandlers = setupBrowserQuitHandler();
     }
   });
 
   onDestroy(() => {
     gameManager?.destroy();
-    cleanupBrowserHandlers?.();
+    //cleanupBrowserHandlers?.();
   });
 
   function setupBrowserQuitHandler(): () => void {
