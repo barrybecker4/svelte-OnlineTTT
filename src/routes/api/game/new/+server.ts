@@ -45,7 +45,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     return json({ error: 'Failed to create or join game' }, { status: 500 });
   }
 
-
   function findAvailableGame(openGames: GameState[]): GameState {
     console.log(`🔍 Looking for available game for "${playerName}"...`);
 
@@ -88,7 +87,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
       // Send WebSocket notification about player joining
       console.log(`📡 Sending playerJoined notification...`);
-      await WebSocketNotificationHelper.sendPlayerJoined(updatedGame, platform);
+      await WebSocketNotificationHelper.sendPlayerJoined(updatedGame, platform!);
 
       return json({
         gameId: updatedGame.gameId,

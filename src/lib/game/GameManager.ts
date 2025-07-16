@@ -92,12 +92,6 @@ export class GameManager {
       if (!gameJoinResult.success) {
         throw new Error(gameJoinResult.error || 'Failed to create/join game');
       }
-      console.log('✅ Game join successful:', {
-        gameId: gameJoinResult.gameId,
-        playerId: gameJoinResult.playerId,
-        symbol: gameJoinResult.playerSymbol,
-        status: gameJoinResult.status
-      });
 
       // Set player data from the service result
       this.playerId = gameJoinResult.playerId;
@@ -110,13 +104,6 @@ export class GameManager {
       if (!loadedGameState) {
         throw new Error('Failed to load game state');
       }
-
-      console.log('📋 Loaded game state:', {
-        gameId: loadedGameState.gameId,
-        status: loadedGameState.status,
-        player1: loadedGameState.player1?.name,
-        player2: loadedGameState.player2?.name
-      });
 
       this.gameState = loadedGameState;
       this.callbacks.onGameStateUpdated(this.gameState);

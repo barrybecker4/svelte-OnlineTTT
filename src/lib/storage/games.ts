@@ -1,5 +1,5 @@
-import type { GameState, OpenGamesList } from '../types/game.ts';
-import type { KVStorage } from './kv.ts';
+import type { GameState, OpenGamesList } from '../types/game';
+import type { KVStorage } from './kv';
 
 const KEYS = {
   GAME: (gameId: string) => `game:${gameId}`,
@@ -12,16 +12,10 @@ const GAME_EXPIRATION_SECONDS = 3600; // 1 hour
 export class GameStorage {
   constructor(private kv: KVStorage) {}
 
-  /**
-   * Get a specific game by ID
-   */
   async getGame(gameId: string): Promise<GameState | null> {
     return await this.kv.get<GameState>(KEYS.GAME(gameId));
   }
 
-  /**
-   * Save/update a game
-   */
   async saveGame(game: GameState): Promise<void> {
     console.log(`💾 Saving game ${game.gameId} with status: ${game.status}`);
 
@@ -38,9 +32,6 @@ export class GameStorage {
     await this.updateOpenGamesList(game);
   }
 
-  /**
-   * Delete a game
-   */
   async deleteGame(gameId: string): Promise<void> {
     const game = await this.getGame(gameId);
     if (!game) return;

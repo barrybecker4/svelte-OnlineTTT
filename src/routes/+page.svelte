@@ -19,17 +19,81 @@
   let wsClient: WebSocketClient | null = null;
   let webSocketNotificationsEnabled: boolean = false;
   let gameManager: GameManager | null = null;
+  let cleanupBrowserHandlers: (() => void) | null = null;
 
   onMount(() => {
     if (browser) {
       playerName = getPlayerName();
       initializeGameManager();
+      cleanupBrowserHandlers = setupBrowserQuitHandler();
     }
   });
 
   onDestroy(() => {
     gameManager?.destroy();
+    cleanupBrowserHandlers?.();
   });
+
+  function setupBrowserQuitHandler(): () => void {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // Only quit if we have an active game
+      if (gameManager && gameState && playerId) {
+        const isGameActive = gameState.status === 'ACTIVE' || gameState.status === 'PENDING';
+
+        if (isGameActive) {
+          console.log('🚪 Browser closing/refreshing - sending quit request');
+
+          // Send quit request synchronously before the page unloads
+          const quitData = JSON.stringify({
+            playerId: playerId,
+            reason: 'RESIGN'
+          });
+
+          try {
+            // sendBeacon is more reliable during page unload than fetch
+            const success = navigator.sendBeacon(`/api/game/${gameState.gameId}/quit`, quitData);
+            console.log('📡 Quit beacon sent:', success);
+          } catch (error) {
+            console.error('❌ Beacon failed, trying fetch:', error);
+            // Fallback to synchronous fetch if sendBeacon fails
+            fetch(`/api/game/${gameState.gameId}/quit`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: quitData,
+              keepalive: true // Keep request alive during page unload
+            }).catch(err => {
+              console.error('❌ Failed to send quit request:', err);
+            });
+          }
+        }
+      }
+    };
+
+    const handleUnload = () => {
+      if (gameManager && gameState && playerId) {
+        const isGameActive = gameState.status === 'ACTIVE' || gameState.status === 'PENDING';
+
+        if (isGameActive) {
+          console.log('🚪 Page unloading - sending quit request');
+          const quitData = JSON.stringify({
+            playerId: playerId,
+            reason: 'RESIGN'
+          });
+
+          // Use sendBeacon for unload event
+          navigator.sendBeacon(`/api/game/${gameState.gameId}/quit`, quitData);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('unload', handleUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('unload', handleUnload);
+    };
+  }
 
   function getPlayerName(): string {
     let playerName = localStorage.getItem('ttt-player-name') || '';
@@ -62,9 +126,10 @@
 
   function onWebSocketStatusChanged(enabled: boolean) {
     webSocketNotificationsEnabled = enabled;
+    wsClient = gameManager?.getWebSocketClient() || null;
   }
 
-  function initializeGameManager(): void {
+  function initializeGameManager() {
     const callbacks: GameManagerCallbacks = {
       onGameStateUpdated,
       onGameHistoryUpdated,
@@ -92,17 +157,6 @@
 
   function handleRestart(): void {
     gameManager.createNewGame();
-  }
-
-  function getOpponentName(): string {
-    if (!gameState) return '';
-
-    const isPlayer1 = gameState.player1.id === playerId;
-    if (isPlayer1) {
-      return gameState.player2?.name || 'Waiting for opponent...';
-    } else {
-      return gameState.player1.name;
-    }
   }
 
   function getMySymbol(): string {
