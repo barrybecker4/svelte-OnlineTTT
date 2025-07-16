@@ -21,10 +21,10 @@
   let gameManager: GameManager | null = null;
   let cleanupBrowserHandlers: (() => void) | null = null;
 
-  onMount(() => {
+  onMount(async () => {
     if (browser) {
       playerName = getPlayerName();
-      initializeGameManager();
+      await initializeGameManager();
       cleanupBrowserHandlers = setupBrowserQuitHandler();
     }
   });
@@ -88,11 +88,11 @@
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    //window.addEventListener('unload', handleUnload);
+    window.addEventListener('unload', handleUnload);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      //window.removeEventListener('unload', handleUnload);
+      window.removeEventListener('unload', handleUnload);
     };
   }
 
