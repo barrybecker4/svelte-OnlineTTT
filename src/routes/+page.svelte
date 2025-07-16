@@ -19,22 +19,21 @@
   let wsClient: WebSocketClient | null = null;
   let webSocketNotificationsEnabled: boolean = false;
   let gameManager: GameManager | null = null;
-  //let cleanupBrowserHandlers: (() => void) | null = null;
+  let cleanupBrowserHandlers: (() => void) | null = null;
 
   onMount(async () => {
     if (browser) {
       playerName = getPlayerName();
       await initializeGameManager();
-      //cleanupBrowserHandlers = setupBrowserQuitHandler();
+      cleanupBrowserHandlers = setupBrowserQuitHandler();
     }
   });
 
   onDestroy(() => {
     gameManager?.destroy();
-    //cleanupBrowserHandlers?.();
+    cleanupBrowserHandlers?.();
   });
 
-  /*
   function setupBrowserQuitHandler(): () => void {
     const handleUnload = () => {
       if (gameManager && gameState && playerId) {
@@ -59,7 +58,6 @@
       window.removeEventListener('beforeunload', handleUnload);
     };
   }
-  */
 
   function getPlayerName(): string {
     let playerName = localStorage.getItem('ttt-player-name') || '';
